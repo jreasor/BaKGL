@@ -48,8 +48,8 @@ DialogDisplay::DialogDisplay(
         true},
     mFullscreenFrame{
         Graphics::DrawMode::Sprite,
-        bgs.GetSpriteSheet(),
-        bgs.GetScreen("OPTIONS2.SCX"),
+        bgs.GetScreen("OPTIONS2.SCX").mSpriteSheet,
+        bgs.GetScreen("OPTIONS2.SCX").mTexture,
         Graphics::ColorMode::Texture,
         glm::vec4{0},
         glm::vec2{0, 0},
@@ -58,8 +58,8 @@ DialogDisplay::DialogDisplay(
     },
     mWorldViewFrame{
         Graphics::DrawMode::Sprite,
-        bgs.GetSpriteSheet(),
-        bgs.GetScreen("DIALOG_BG_MAIN.SCX"),
+        bgs.GetScreen("DIALOG_BG_MAIN.SCX").mSpriteSheet,
+        bgs.GetScreen("DIALOG_BG_MAIN.SCX").mTexture,
         Graphics::ColorMode::Texture,
         glm::vec4{0},
         glm::vec2{0, 0},
@@ -74,8 +74,8 @@ DialogDisplay::DialogDisplay(
     },
     mActionAreaBackground{
         Graphics::DrawMode::Sprite,
-        bgs.GetSpriteSheet(),
-        bgs.GetScreen("DIALOG.SCX"),
+        bgs.GetScreen("DIALOG.SCX").mSpriteSheet,
+        bgs.GetScreen("DIALOG.SCX").mTexture,
         Graphics::ColorMode::Texture,
         glm::vec4{0},
         glm::vec2{-15, -11},

@@ -36,8 +36,8 @@ CampScreen::CampScreen(
 :
     Widget{
         Graphics::DrawMode::Sprite,
-        backgrounds.GetSpriteSheet(),
-        backgrounds.GetScreen(sScreen),
+        backgrounds.GetScreen(sScreen).mSpriteSheet,
+        backgrounds.GetScreen(sScreen).mTexture,
         Graphics::ColorMode::Texture,
         glm::vec4{1},
         glm::vec2{0},
@@ -52,8 +52,8 @@ CampScreen::CampScreen(
     mCampData{},
     mFrame{
         Graphics::DrawMode::Sprite,
-        backgrounds.GetSpriteSheet(),
-        backgrounds.GetScreen("DIALOG_BG_MAIN.SCX"),
+        backgrounds.GetScreen("DIALOG_BG_MAIN.SCX").mSpriteSheet,
+        backgrounds.GetScreen("DIALOG_BG_MAIN.SCX").mTexture,
         Graphics::ColorMode::Texture,
         glm::vec4{1},
         glm::vec2{0},

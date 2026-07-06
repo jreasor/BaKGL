@@ -24,8 +24,8 @@ MainView::MainView(
 :
     Widget{
         Graphics::DrawMode::Sprite,
-        backgrounds.GetSpriteSheet(),
-        backgrounds.GetScreen("FRAME.SCX"),
+        backgrounds.GetScreen("FRAME.SCX").mSpriteSheet,
+        backgrounds.GetScreen("FRAME.SCX").mTexture,
         Graphics::ColorMode::Texture,
         glm::vec4{1},
         glm::vec2{0},

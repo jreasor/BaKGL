@@ -34,8 +34,8 @@ MainMenuScreen::MainMenuScreen(
     mLayoutGameRunning{sLayoutFileGameRunning},
     mFrame{
         ImageTag{},
-        backgrounds.GetSpriteSheet(),
-        backgrounds.GetScreen(sBackground),
+        backgrounds.GetScreen(sBackground).mSpriteSheet,
+        backgrounds.GetScreen(sBackground).mTexture,
         glm::vec2{0},
         GetPositionInfo().mDimensions,
         true
@@ -249,7 +249,9 @@ void MainMenuScreen::AddMainMenu()
 
     if (mGameRunning)
     {
-        mFrame.SetTexture(mBackgrounds.GetScreen(sBackgroundGameRunning));
+        const auto hGame = mBackgrounds.GetScreen(sBackgroundGameRunning);
+        mFrame.SetSpriteSheet(hGame.mSpriteSheet);
+        mFrame.SetTexture(hGame.mTexture);
 
         mStartNew.SetPosition(mLayoutGameRunning.GetWidgetLocation(sStartNew));
         mRestore.SetPosition(mLayoutGameRunning.GetWidgetLocation(sRestore));
@@ -262,7 +264,9 @@ void MainMenuScreen::AddMainMenu()
     }
     else
     {
-        mFrame.SetTexture(mBackgrounds.GetScreen(sBackground));
+        const auto h = mBackgrounds.GetScreen(sBackground);
+        mFrame.SetSpriteSheet(h.mSpriteSheet);
+        mFrame.SetTexture(h.mTexture);
 
         mStartNew.SetPosition(mLayout.GetWidgetLocation(sStartNew));
         mRestore.SetPosition(mLayout.GetWidgetLocation(sRestore));

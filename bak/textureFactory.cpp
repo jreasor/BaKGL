@@ -276,7 +276,8 @@ void TextureFactory::AddToTextureStore(
 void TextureFactory::AddScreenToTextureStore(
     Graphics::TextureStore& store,
     std::string_view scx,
-    std::string_view pal)
+    std::string_view pal,
+    bool allowUncapped)
 {
     auto baseName = SplitString(".", std::string(scx))[0];
     auto substitute = FindSubstitute(baseName, ".PNG");
@@ -288,7 +289,7 @@ void TextureFactory::AddScreenToTextureStore(
         auto target = LoadScreenResource(fb);
         Logging::LogDebug(__FUNCTION__) << "Found substitute SCX: " << *substitute << "\n";
         store.AddTexture(PNGToTexture(substitute->string(), target.GetWidth(), target.GetHeight(),
-            Graphics::GraphicsConfig::Get().IsHero(baseName)));
+            allowUncapped));
     }
     else
     {

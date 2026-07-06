@@ -28,8 +28,8 @@ FullMap::FullMap(
 :
     Widget{
         Graphics::DrawMode::Sprite,
-        backgrounds.GetSpriteSheet(),
-        backgrounds.GetScreen("FULLMAP.SCX"),
+        backgrounds.GetScreen("FULLMAP.SCX").mSpriteSheet,
+        backgrounds.GetScreen("FULLMAP.SCX").mTexture,
         Graphics::ColorMode::Texture,
         glm::vec4{1},
         glm::vec2{0},

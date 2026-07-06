@@ -34,8 +34,8 @@ CastScreen::CastScreen(
 :
     Widget{
         Graphics::DrawMode::Sprite,
-        backgrounds.GetSpriteSheet(),
-        backgrounds.GetScreen(sCastPanel),
+        backgrounds.GetScreen(sCastPanel).mSpriteSheet,
+        backgrounds.GetScreen(sCastPanel).mTexture,
         Graphics::ColorMode::Texture,
         glm::vec4{1},
         glm::vec2{0},

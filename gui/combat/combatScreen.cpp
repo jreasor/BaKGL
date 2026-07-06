@@ -43,8 +43,8 @@ CombatScreen::CombatScreen(
     mLayout{sLayoutFile},
     mFrame{
         ImageTag{},
-        backgrounds.GetSpriteSheet(),
-        backgrounds.GetScreen(sBackground),
+        backgrounds.GetScreen(sBackground).mSpriteSheet,
+        backgrounds.GetScreen(sBackground).mTexture,
         glm::vec2{0},
         GetPositionInfo().mDimensions,
         true

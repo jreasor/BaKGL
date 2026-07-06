@@ -44,8 +44,8 @@ DynamicTTM::DynamicTTM(
     },
     mDialogBackground{
         Graphics::DrawMode::Sprite,
-        backgrounds.GetSpriteSheet(),
-        backgrounds.GetScreen("DIALOG.SCX"),
+        backgrounds.GetScreen("DIALOG.SCX").mSpriteSheet,
+        backgrounds.GetScreen("DIALOG.SCX").mTexture,
         Graphics::ColorMode::Texture,
         glm::vec4{1},
         glm::vec2{0},

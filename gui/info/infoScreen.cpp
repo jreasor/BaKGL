@@ -31,8 +31,8 @@ InfoScreen::InfoScreen(
 :
     Widget{
         Graphics::DrawMode::Sprite,
-        backgrounds.GetSpriteSheet(),
-        backgrounds.GetScreen("OPTIONS1.SCX"),
+        backgrounds.GetScreen("OPTIONS1.SCX").mSpriteSheet,
+        backgrounds.GetScreen("OPTIONS1.SCX").mTexture,
         Graphics::ColorMode::Texture,
         glm::vec4{1},
         glm::vec2{0},

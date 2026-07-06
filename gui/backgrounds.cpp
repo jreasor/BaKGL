@@ -4,6 +4,7 @@
 
 #include "com/logger.hpp"
 
+#include "graphics/graphicsConfig.hpp"
 #include "graphics/texture.hpp"
 #include "graphics/sprites.hpp"
 
@@ -18,30 +19,46 @@ Backgrounds::Backgrounds(
     Graphics::SpriteManager& spriteManager)
 :
     mSpriteSheet{spriteManager.AddSpriteSheet()},
-    mScxToSprite{},
+    mScxToScreen{},
     mLogger{Logging::LogState::GetLogger("Gui::Backgrounds")}
 {
-    unsigned i = 0;
+    // Shared-store layer index. CRITICAL: hero screens never touch this — they go to
+    // their own dedicated one-layer sheets. If a hero advanced sharedIdx without adding
+    // to `textures`, every subsequent shared ScreenHandle.mTexture would be off-by-one
+    // and point at the wrong layer.
+    unsigned sharedIdx = 0;
+    // Shared sheet. maxDim stays <= MaxTextureDim because no uncapped (hero) substitute
+    // ever enters it — heroes are routed to dedicated sheets before AddScreenToTextureStore.
     auto textures = Graphics::TextureStore{};
 
-    const auto AddScreen = [this, &i, &textures](
+    // Non-hero screen: appends one layer to the shared store, records (sharedSheet, layer).
+    const auto AddSharedScreen = [this, &sharedIdx, &textures](
         const std::string& scx,
         const std::string& pal)
     {
-        mScxToSprite.emplace(
-            std::make_pair(scx, i++));
+        mScxToScreen.emplace(
+            std::make_pair(scx, ScreenHandle{mSpriteSheet, Graphics::TextureIndex{sharedIdx++}}));
         BAK::TextureFactory::AddScreenToTextureStore(
             textures, scx, pal);
     };
 
-    const auto AddBackground = [this, &i, &textures](
-        const std::string& bmx,
+    // Hero screen: its own dedicated one-layer sheet, substitute loaded UNCAPPED so a
+    // true 4K background survives at full res without inflating the shared sheet. The
+    // dedicated sheet is lifetime-of-SpriteManager (Backgrounds is never rebuilt today).
+    const auto AddHeroScreen = [this, &spriteManager](
+        const std::string& scx,
         const std::string& pal)
     {
-        mScxToSprite.emplace(
-            std::make_pair(bmx, i++));
-        BAK::TextureFactory::AddToTextureStore(
-            textures, bmx, pal);
+        auto heroSheet = spriteManager.AddSpriteSheet();
+        auto fresh = Graphics::TextureStore{};
+        BAK::TextureFactory::AddScreenToTextureStore(
+            fresh, scx, pal, /*allowUncapped=*/true);
+        spriteManager.GetSpriteSheet(heroSheet).LoadTexturesGL(
+            fresh, Graphics::FilterMode::LinearMipmap);
+        mScxToScreen.emplace(
+            std::make_pair(scx, ScreenHandle{heroSheet, Graphics::TextureIndex{0}}));
+        mLogger.Debug() << "Screen " << scx << " -> dedicated sheet "
+            << heroSheet << " (hero)\n";
     };
 
     for (const auto& [scx, pal] : {
@@ -64,18 +81,58 @@ Backgrounds::Backgrounds(
         std::make_pair("BOOK.SCX", "BOOK.PAL")
     })
     {
-        AddScreen(scx, pal);
+        const auto scxStr = std::string{scx};
+        const auto base = scxStr.substr(0, scxStr.rfind('.'));
+        if (Graphics::GraphicsConfig::Get().IsHero(base))
+            AddHeroScreen(scxStr, pal);
+        else
+            AddSharedScreen(scxStr, pal);
     }
 
     // Add this screen and cut out the center so we can use
-    // it in the main view without any scissoring
+    // it in the main view without any scissoring. NOTE: the loaded file is DIALOG.SCX
+    // but the map key is the synthetic DIALOG_BG_MAIN.SCX. The hero check is therefore
+    // IsHero("DIALOG") — IsHero("DIALOG_BG_MAIN") would always be false and silently
+    // leave the cut-out in the shared sheet (the exact OOM this isolation prevents).
     {
-        mScxToSprite.emplace(std::make_pair("DIALOG_BG_MAIN.SCX", i++));
-        BAK::TextureFactory::AddScreenToTextureStore(
-            textures, "DIALOG.SCX", "OPTIONS.PAL");
-        auto& tex = textures.GetTexture(i - 1);
-        Gui::PrepareMainViewBackground(tex);
+        if (Graphics::GraphicsConfig::Get().IsHero("DIALOG"))
+        {
+            auto heroSheet = spriteManager.AddSpriteSheet();
+            auto fresh = Graphics::TextureStore{};
+            BAK::TextureFactory::AddScreenToTextureStore(
+                fresh, "DIALOG.SCX", "OPTIONS.PAL", /*allowUncapped=*/true);
+            Gui::PrepareMainViewBackground(fresh.GetTexture(0));
+            spriteManager.GetSpriteSheet(heroSheet).LoadTexturesGL(
+                fresh, Graphics::FilterMode::LinearMipmap);
+            mScxToScreen.emplace(
+                std::make_pair("DIALOG_BG_MAIN.SCX",
+                    ScreenHandle{heroSheet, Graphics::TextureIndex{0}}));
+            mLogger.Debug() << "Screen DIALOG_BG_MAIN.SCX -> dedicated sheet "
+                << heroSheet << " (hero, cut-out)\n";
+        }
+        else
+        {
+            mScxToScreen.emplace(
+                std::make_pair("DIALOG_BG_MAIN.SCX",
+                    ScreenHandle{mSpriteSheet, Graphics::TextureIndex{sharedIdx++}}));
+            BAK::TextureFactory::AddScreenToTextureStore(
+                textures, "DIALOG.SCX", "OPTIONS.PAL");
+            auto& tex = textures.GetTexture(sharedIdx - 1);
+            Gui::PrepareMainViewBackground(tex);
+        }
     }
+
+    // TELEPORT.BMX is a BMX (multi-image) background, not an SCX screen — IsHero is
+    // SCX-only by design (Increment A), so it always stays in the shared (capped) sheet.
+    const auto AddBackground = [this, &sharedIdx, &textures](
+        const std::string& bmx,
+        const std::string& pal)
+    {
+        mScxToScreen.emplace(
+            std::make_pair(bmx, ScreenHandle{mSpriteSheet, Graphics::TextureIndex{sharedIdx++}}));
+        BAK::TextureFactory::AddToTextureStore(
+            textures, bmx, pal);
+    };
 
     for (const auto& [bmx, pal] : {
         std::make_pair("TELEPORT.BMX", "TELEPORT.PAL"),
@@ -90,15 +147,10 @@ Backgrounds::Backgrounds(
 }
 
 
-Graphics::SpriteSheetIndex Backgrounds::GetSpriteSheet() const
+Backgrounds::ScreenHandle Backgrounds::GetScreen(const std::string& scx) const
 {
-    return mSpriteSheet;
-}
-
-Graphics::TextureIndex Backgrounds::GetScreen(const std::string& scx) const
-{
-    ASSERT(mScxToSprite.contains(scx));
-    return mScxToSprite.find(scx)->second;
+    ASSERT(mScxToScreen.contains(scx));
+    return mScxToScreen.find(scx)->second;
 }
 
 }

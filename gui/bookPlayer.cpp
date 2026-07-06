@@ -21,8 +21,8 @@ BookPlayer::BookPlayer(
     mTextures{},
     mBackground{
        ImageTag{},
-       background.GetSpriteSheet(),
-       background.GetScreen("BOOK.SCX"),
+       background.GetScreen("BOOK.SCX").mSpriteSheet,
+       background.GetScreen("BOOK.SCX").mTexture,
        {0, 0},
        {320, 200},
        true},

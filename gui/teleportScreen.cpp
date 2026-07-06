@@ -34,8 +34,8 @@ TeleportScreen::TeleportScreen(
 :
     Widget{
         Graphics::DrawMode::Sprite,
-        backgrounds.GetSpriteSheet(),
-        backgrounds.GetScreen("DIALOG.SCX"),
+        backgrounds.GetScreen("DIALOG.SCX").mSpriteSheet,
+        backgrounds.GetScreen("DIALOG.SCX").mTexture,
         Graphics::ColorMode::Texture,
         glm::vec4{1},
         glm::vec2{0},
@@ -96,8 +96,8 @@ TeleportScreen::TeleportScreen(
     },
     mMap{
         Graphics::DrawMode::Sprite,
-        backgrounds.GetSpriteSheet(),
-        backgrounds.GetScreen("FULLMAP.SCX"),
+        backgrounds.GetScreen("FULLMAP.SCX").mSpriteSheet,
+        backgrounds.GetScreen("FULLMAP.SCX").mTexture,
         Graphics::ColorMode::Texture,
         glm::vec4{1},
         glm::vec2{23, 2},

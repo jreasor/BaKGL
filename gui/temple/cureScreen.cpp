@@ -29,8 +29,8 @@ CureScreen::CureScreen(
 :
     Widget{
         Graphics::DrawMode::Sprite,
-        backgrounds.GetSpriteSheet(),
-        backgrounds.GetScreen(sScreen),
+        backgrounds.GetScreen(sScreen).mSpriteSheet,
+        backgrounds.GetScreen(sScreen).mTexture,
         Graphics::ColorMode::Texture,
         glm::vec4{1},
         glm::vec2{0},

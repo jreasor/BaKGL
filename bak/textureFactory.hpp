@@ -24,10 +24,17 @@ public:
         std::string_view bmx,
         std::string_view pal);
 
+    // Task 3.2: allowUncapped=true bypasses the MaxTextureDim downscale so a hero SCX
+    // substitute loads at its full resolution. Only Backgrounds passes true (it routes
+    // heroes to a dedicated one-layer sheet, so the shared sheet's maxDim never inflates).
+    // Every other caller (gdsScene/contents/staticTTM) takes the default false and stays
+    // capped regardless of HeroTextures — closing the cross-cutting blast radius of the
+    // earlier data-driven internal IsHero() call.
     static void AddScreenToTextureStore(
         Graphics::TextureStore&,
         std::string_view scx,
-        std::string_view pal);
+        std::string_view pal,
+        bool allowUncapped = false);
 
     static void AddTerrainToTextureStore(
         Graphics::TextureStore&,
