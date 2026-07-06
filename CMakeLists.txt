@@ -301,6 +301,44 @@ if(NOT SDLMixerX_POPULATED)
 
     add_subdirectory(${sdlmixerx_SOURCE_DIR} ${sdlmixerx_BINARY_DIR})
 
+    # sdlmixerx links the raw libfluidsynth.a (music_fluidsynth.cmake appends
+    # FluidSynth_LIBRARIES to SDLMixerX_LINK_LIBS) but does not propagate FluidSynth's
+    # transitive static-link deps (glib, libsndfile, CoreMIDI, portaudio, readline, ...).
+    # On macOS the final executable then fails to link with unresolved _g_usleep / _sf_*
+    # / _kMIDIPropertyName / _readline. Re-derive those deps from pkg-config and attach
+    # them to the static target's INTERFACE so every consumer (audio -> bak -> main3d,
+    # display_sound, ...) links them after libfluidsynth.a.
+    if (USE_MIDI_FLUIDSYNTH AND APPLE)
+        find_package(PkgConfig QUIET)
+        if (PkgConfig_FOUND)
+            execute_process(
+                COMMAND pkg-config --static --libs fluidsynth
+                OUTPUT_VARIABLE BAK_FLUIDSYNTH_PC_LDFLAGS
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+                RESULT_VARIABLE BAK_FLUIDSYNTH_PC_RC)
+            if (BAK_FLUIDSYNTH_PC_RC EQUAL 0 AND BAK_FLUIDSYNTH_PC_LDFLAGS)
+                # Fold "-framework Foo" (space-form) into the single-token comma form
+                # "-Wl,-framework,Foo". Otherwise separate_arguments splits the pair and
+                # target_link_libraries turns the bare "Foo" into -lFoo, which the linker
+                # can't find (frameworks are not -l libraries).
+                string(REPLACE "-framework " "-Wl,-framework," BAK_FLUIDSYNTH_PC_LDFLAGS "${BAK_FLUIDSYNTH_PC_LDFLAGS}")
+                separate_arguments(BAK_FLUIDSYNTH_PC_LDFLAGS UNIX_COMMAND "${BAK_FLUIDSYNTH_PC_LDFLAGS}")
+                # libsndfile's codec deps such as lame have no .pc file, so pkg-config
+                # emits -lmp3lame without a -L path to it. Homebrew symlinks every keg's
+                # lib into its global lib dir, so prepend that to cover them.
+                foreach(_hb_lib /opt/homebrew/lib /usr/local/lib)
+                    if (EXISTS "${_hb_lib}")
+                        list(PREPEND BAK_FLUIDSYNTH_PC_LDFLAGS "-L${_hb_lib}")
+                    endif()
+                endforeach()
+                target_link_libraries(SDL2_mixer_ext_Static INTERFACE ${BAK_FLUIDSYNTH_PC_LDFLAGS})
+                message(STATUS "FluidSynth: appended pkg-config static deps to SDL2_mixer_ext_Static INTERFACE")
+            else()
+                message(WARNING "FluidSynth: pkg-config --static --libs fluidsynth failed; static link may break")
+            endif()
+        endif()
+    endif()
+
     file(REMOVE ${CMAKE_BINARY_DIR}/lib/libADLMIDI.a)
     file(REMOVE ${CMAKE_BINARY_DIR}/lib/libOPNMIDI.a)
     file(REMOVE ${CMAKE_BINARY_DIR}/lib/libADLMIDI.lib)
