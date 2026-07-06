@@ -11,6 +11,7 @@ add_executable(bakTest
     partyTest.cpp
     skillTest.cpp
     templeTest.cpp
+    terrainSubstituteTest.cpp
     )
 
 target_link_libraries(bakTest

@@ -32,7 +32,8 @@ public:
     static void AddTerrainToTextureStore(
         Graphics::TextureStore&,
         const Image& terrain,
-        const Palette&);
+        const Palette&,
+        std::string_view scx);
 
     static void AddToTextureStore(
         Graphics::TextureStore& store,

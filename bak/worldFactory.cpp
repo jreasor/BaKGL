@@ -47,7 +47,8 @@ ZoneTextureStore::ZoneTextureStore(
     TextureFactory::AddTerrainToTextureStore(
         mTextures,
         terrain,
-        pal);
+        pal,
+        zoneLabel.GetTerrain());
 
     mHorizonOffset = GetTextures().size();
 }
