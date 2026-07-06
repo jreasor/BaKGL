@@ -287,7 +287,19 @@ void TextureBuffer::LoadTexturesGL(
     FilterMode filter)
 {
     if (textures.size() > sMaxTextures)
-        throw std::runtime_error("Too many textures");
+    {
+        // 4K doesn't raise the layer *count* (only per-texel size), but a shared
+        // TextureStore that legitimately exceeds the ceiling would overflow the
+        // GL_TEXTURE_2D_ARRAY. Fail loudly with diagnostics (ROADMAP Task 1.5) instead
+        // of the bare "Too many textures" throw. Fix is to split the store or raise
+        // sMaxTextures; allocation below is exact, so raising the ceiling is VRAM-free
+        // for stores that don't approach it.
+        Logging::LogError(__FUNCTION__) << "Too many textures: store has "
+            << textures.size() << " layers, cap sMaxTextures=" << sMaxTextures
+            << " (would overflow GL_TEXTURE_2D_ARRAY)."
+            << " Split the TextureStore or raise sMaxTextures.\n";
+        throw std::runtime_error("Too many textures (see log for store size / cap)");
+    }
 
     BindGL();
 
@@ -300,12 +312,21 @@ void TextureBuffer::LoadTexturesGL(
         for (auto d = maxDim; d > 1; d >>= 1) ++levels;
     }
 
+    // Allocate exactly as many layers as the store needs (>=1), not the full sMaxTextures
+    // ceiling. sMaxTextures is now a pure runaway-guard (checked above); small stores
+    // (cursor/font/icons, ~1-20 textures) no longer pre-allocate 256 layers of
+    // maxDim*maxDim*RGBA8 each. The fill loop below writes layers 0..n-1, all in range.
+    // (ROADMAP Task 1.5)
+    const auto layerCount = textures.size() > 0
+        ? static_cast<GLsizei>(textures.size())
+        : GLsizei{1};
+
     glTexStorage3D(
         mTextureType,
         levels,         // mip levels: 1 for Nearest, full chain for LinearMipmap
         GL_RGBA8,       // Internal format
         maxDim, maxDim, // width,height
-        sMaxTextures     // Number of layers
+        layerCount      // Number of layers (exact, not the sMaxTextures ceiling)
     );
 
 
