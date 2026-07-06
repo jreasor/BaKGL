@@ -197,7 +197,7 @@ StaticTTM::StaticTTM(
 
     spriteManager
         .GetSpriteSheet(mSpriteSheet->mSpriteSheet)
-        .LoadTexturesGL(textures);
+        .LoadTexturesGL(textures, Graphics::FilterMode::LinearMipmap);
 }
 
 Widget* StaticTTM::GetScene()

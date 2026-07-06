@@ -32,7 +32,7 @@ BookPlayer::BookPlayer(
     auto bookTextures = Graphics::TextureStore{};
     BAK::TextureFactory::AddToTextureStore(
         mTextures, "BOOK.BMX", "BOOK.PAL");
-    spriteManager.GetSpriteSheet(mSpriteSheet->mSpriteSheet).LoadTexturesGL(mTextures);
+    spriteManager.GetSpriteSheet(mSpriteSheet->mSpriteSheet).LoadTexturesGL(mTextures, Graphics::FilterMode::LinearMipmap);
 }
 
 void BookPlayer::PlayBook(std::string book)

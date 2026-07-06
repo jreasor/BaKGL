@@ -65,7 +65,7 @@ ContentsScreen::ContentsScreen(
                 mLayout.GetWidgetLocation(i) + glm::vec2{0, 17},
                 mLayout.GetWidgetDimensions(i)));
     }
-    spriteManager.GetSpriteSheet(mSpriteSheet->mSpriteSheet).LoadTexturesGL(textures);
+    spriteManager.GetSpriteSheet(mSpriteSheet->mSpriteSheet).LoadTexturesGL(textures, Graphics::FilterMode::LinearMipmap);
     AddChildren();
 }
 

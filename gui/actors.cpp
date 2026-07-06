@@ -68,7 +68,7 @@ Actors::Actors(
     }
 
     auto& spriteSheet = spriteManager.GetSpriteSheet(mSpriteSheet);
-    spriteSheet.LoadTexturesGL(textures);
+    spriteSheet.LoadTexturesGL(textures, Graphics::FilterMode::LinearMipmap);
 }
 
 Graphics::SpriteSheetIndex Actors::GetSpriteSheet() const

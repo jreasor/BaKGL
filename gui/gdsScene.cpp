@@ -90,7 +90,7 @@ GDSScene::GDSScene(
     const auto dims = textures.GetTexture(0).GetDims();
     mSpriteManager
         .GetSpriteSheet(mSpriteSheet->mSpriteSheet)
-        .LoadTexturesGL(textures);
+        .LoadTexturesGL(textures, Graphics::FilterMode::LinearMipmap);
 
     SetDimensions(dims);
 

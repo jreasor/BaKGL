@@ -101,7 +101,7 @@ void DynamicTTM::BeginScene(
     mRenderedFrames = renderer.RenderTTM();
     mRenderedFramesSheet = mSpriteManager.AddTemporarySpriteSheet();
     mCurrentRenderedFrame = 0;
-    mSpriteManager.GetSpriteSheet(mRenderedFramesSheet->mSpriteSheet).LoadTexturesGL(mRenderedFrames);
+    mSpriteManager.GetSpriteSheet(mRenderedFramesSheet->mSpriteSheet).LoadTexturesGL(mRenderedFrames, Graphics::FilterMode::LinearMipmap);
 
     mSceneElements.clear();
     mSceneElements.emplace_back(
