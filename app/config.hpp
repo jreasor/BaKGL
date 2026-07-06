@@ -25,6 +25,10 @@ struct Graphics
     bool mDebugRenderEncounters{false};
     int mDrawDistance{128000};
     unsigned mMaxTextureDim{2048};
+    // Task 3.2: base names (no extension) of fullscreen SCX backgrounds that bypass
+    // the MaxTextureDim cap and get a dedicated one-layer sheet at the substitute's
+    // full uncapped resolution. Empty = today's behavior (all substitutes capped).
+    std::vector<std::string> mHeroTextures{};
 };
 
 struct Logging

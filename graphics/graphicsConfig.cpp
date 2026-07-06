@@ -30,6 +30,19 @@ void GraphicsConfig::SetMaxTextureDim(unsigned dim)
     mMaxTextureDim = effective;
 }
 
+bool GraphicsConfig::IsHero(const std::string& baseName) const
+{
+    return mHeroTextures.contains(baseName);
+}
+
+void GraphicsConfig::SetHeroTextures(const std::vector<std::string>& heroes)
+{
+    mHeroTextures.clear();
+    for (const auto& h : heroes) mHeroTextures.insert(h);
+    Logging::LogInfo(__FUNCTION__) << "HeroTextures = " << mHeroTextures.size()
+        << " entries\n";
+}
+
 GraphicsConfig::GraphicsConfig()
 :   mMaxTextureDim{2048}
 {}

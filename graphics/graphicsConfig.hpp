@@ -1,5 +1,9 @@
 #pragma once
 
+#include <string>
+#include <unordered_set>
+#include <vector>
+
 namespace Graphics {
 
 // Process-wide graphics settings derived from config.json. Mirrors the Paths
@@ -18,10 +22,18 @@ public:
     unsigned GetMaxTextureDim() const;
     void SetMaxTextureDim(unsigned dim);
 
+    // Task 3.2 — hero fullscreen backgrounds: base names (no extension) that bypass
+    // the MaxTextureDim cap and get a dedicated one-layer sheet at the substitute's
+    // full uncapped resolution. Consulted by the SCX substitute path so the bypass
+    // is data-driven (no param threading). Empty set = today's behavior (all capped).
+    bool IsHero(const std::string& baseName) const;
+    void SetHeroTextures(const std::vector<std::string>& heroes);
+
 private:
     GraphicsConfig();
 
     unsigned mMaxTextureDim;
+    std::unordered_set<std::string> mHeroTextures;
 };
 
 }

@@ -58,14 +58,14 @@ Graphics::Texture ImageToTexture(const Image& image, const Palette& palette)
 // the texture enters any store. STBIR_RGBA is non-premultiplied, so stbir alpha-weights
 // internally; RGB is treated as sRGB, alpha as linear — correct for straight-alpha RGBA8.
 // Shared by PNGToTexture and the terrain slicer so every substitute path is capped.
-static PNGImage LoadAndCapPNG(const std::string& path)
+static PNGImage LoadAndCapPNG(const std::string& path, bool allowUncapped = false)
 {
     auto image = LoadPNG(path.c_str());
     auto width = image.mWidth;
     auto height = image.mHeight;
 
     const auto cap = Graphics::GraphicsConfig::Get().GetMaxTextureDim();
-    if (cap > 0 && (width > cap || height > cap))
+    if (!allowUncapped && cap > 0 && (width > cap || height > cap))
     {
         const auto scale = static_cast<float>(cap) / std::max(width, height);
         const auto newW = std::max(1u, static_cast<unsigned>(std::lround(width  * scale)));
@@ -92,12 +92,18 @@ static PNGImage LoadAndCapPNG(const std::string& path)
                 << "); using uncapped texture (shared-sheet OOM risk)\n";
         }
     }
+    else if (allowUncapped && cap > 0 && (width > cap || height > cap))
+    {
+        Logging::LogDebug(__FUNCTION__) << "Hero substitute " << path
+            << " (" << width << "x" << height << ") loaded UNCAPPED"
+            << " (cap=" << cap << ")\n";
+    }
     return image;
 }
 
-Graphics::Texture PNGToTexture(std::string path, unsigned targetWidth, unsigned targetHeight)
+Graphics::Texture PNGToTexture(std::string path, unsigned targetWidth, unsigned targetHeight, bool allowUncapped = false)
 {
-    auto image = LoadAndCapPNG(path);
+    auto image = LoadAndCapPNG(path, allowUncapped);
     auto width = image.mWidth;
     auto height = image.mHeight;
 
@@ -281,7 +287,8 @@ void TextureFactory::AddScreenToTextureStore(
             .CreateDataBuffer(std::string{scx});
         auto target = LoadScreenResource(fb);
         Logging::LogDebug(__FUNCTION__) << "Found substitute SCX: " << *substitute << "\n";
-        store.AddTexture(PNGToTexture(substitute->string(), target.GetWidth(), target.GetHeight()));
+        store.AddTexture(PNGToTexture(substitute->string(), target.GetWidth(), target.GetHeight(),
+            Graphics::GraphicsConfig::Get().IsHero(baseName)));
     }
     else
     {

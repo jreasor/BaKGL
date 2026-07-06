@@ -12,6 +12,11 @@
         "EnableImGui": false,
         "DrawDistance": 128000,
         "MaxTextureDim": 2048,
+        // Task 3.2: hero fullscreen backgrounds (BASE names, no extension) get a
+        // dedicated one-layer sheet at the substitute's full uncapped resolution.
+        // Empty list = today's behavior (all substitutes capped to MaxTextureDim).
+        // Increment A lands this inert; Increment B populates it. See ROADMAP §3.2.
+        "HeroTextures": [],
         "DebugDisableFades": false,
         "DebugRenderEncounters": false
     },
