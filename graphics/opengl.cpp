@@ -284,7 +284,8 @@ void TextureBuffer::MakePickBuffer(unsigned width, unsigned height)
 void TextureBuffer::LoadTexturesGL(
     const std::vector<Texture>& textures,
     unsigned maxDim,
-    FilterMode filter)
+    FilterMode filter,
+    WrapMode wrap)
 {
     if (textures.size() > sMaxTextures)
     {
@@ -360,10 +361,14 @@ void TextureBuffer::LoadTexturesGL(
         glGenerateMipmap(mTextureType);
         glTexParameteri(mTextureType, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
         glTexParameteri(mTextureType, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        // Screens don't tile; clamp to edge so the wrapped-fill padding doesn't bleed
-        // into the visible sub-rect at coarse mip levels.
-        glTexParameteri(mTextureType, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(mTextureType, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        // Task 3.1: wrap is caller-controlled. GUI screens don't tile (ClampToEdge,
+        // the default) so the wrapped-fill padding doesn't bleed into the visible
+        // sub-rect at coarse mip levels; tiled terrain passes Repeat. The Nearest
+        // branch below keeps its hardcoded GL_REPEAT, so this only affects mipped
+        // textures.
+        const auto wrapMode = (wrap == WrapMode::Repeat) ? GL_REPEAT : GL_CLAMP_TO_EDGE;
+        glTexParameteri(mTextureType, GL_TEXTURE_WRAP_S, wrapMode);
+        glTexParameteri(mTextureType, GL_TEXTURE_WRAP_T, wrapMode);
     }
     else
     {

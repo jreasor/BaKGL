@@ -185,6 +185,16 @@ enum class FilterMode
     LinearMipmap,
 };
 
+// Wrap mode for the LinearMipmap upload path (Task 3.1). GUI screens don't tile
+// -> ClampToEdge (the TextureBuffer default, so the Sprites/backgrounds path from
+// increment 1 is unchanged). Tiled terrain/world passes Repeat. The Nearest path
+// keeps its hardcoded GL_REPEAT, so WrapMode only affects LinearMipmap callers.
+enum class WrapMode
+{
+    Repeat,
+    ClampToEdge,
+};
+
 class TextureBuffer
 {
 public:
@@ -210,7 +220,8 @@ public:
     void LoadTexturesGL(
         const std::vector<Texture>& textures,
         unsigned maxDim,
-        FilterMode filter = FilterMode::Nearest);
+        FilterMode filter = FilterMode::Nearest,
+        WrapMode wrap = WrapMode::ClampToEdge);
 
 private:
     GLuint mTextureBuffer;

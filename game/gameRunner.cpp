@@ -133,7 +133,11 @@ void GameRunner::LoadZoneData(BAK::ZoneNumber zone)
     mZoneRenderData = std::make_unique<Graphics::RenderData>();
     mZoneRenderData->LoadData(
         mZoneData->mObjects, mZoneData->mZoneTextures.GetTextures(),
-        mZoneData->mZoneTextures.GetMaxDim());
+        mZoneData->mZoneTextures.GetMaxDim(),
+        // Task 3.1 (terrain increment): mipmapped linear filtering for the zone's
+        // 4K terrain + world-object textures. Wrap defaults to Repeat (RenderData)
+        // so the tiled ground doesn't seam at coarse mip levels.
+        Graphics::FilterMode::LinearMipmap);
     LoadSystems();
     mCamera.SetGameLocation(mGameState.GetLocation());
 }

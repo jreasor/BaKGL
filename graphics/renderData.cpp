@@ -20,7 +20,9 @@ RenderData::RenderData()
 void RenderData::LoadData(
     const MeshObjectStorage& objectStore,
     const std::vector<Texture>& textures,
-    unsigned maxDimension)
+    unsigned maxDimension,
+    FilterMode filter,
+    WrapMode wrap)
 {
     Logging::LogInfo(__FUNCTION__) << "Loading render data. Textures: " << textures.size() << " max dim: " << maxDimension << "\n";
     // FIXME Issue 48: Need to do destruct and restruct all the buffers
@@ -45,7 +47,9 @@ void RenderData::LoadData(
 
     mTextureBuffer.LoadTexturesGL(
         textures,
-        maxDimension);
+        maxDimension,
+        filter,
+        wrap);
 }
 
 void RenderData::Bind(GLuint textureTarget) const
