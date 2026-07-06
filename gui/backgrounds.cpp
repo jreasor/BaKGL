@@ -8,6 +8,7 @@
 #include "graphics/sprites.hpp"
 
 #include "gui/colors.hpp"
+#include "gui/screenCutout.hpp"
 
 #include <glm/glm.hpp>
 
@@ -73,30 +74,7 @@ Backgrounds::Backgrounds(
         BAK::TextureFactory::AddScreenToTextureStore(
             textures, "DIALOG.SCX", "OPTIONS.PAL");
         auto& tex = textures.GetTexture(i - 1);
-        for (auto& pixel : tex.GetTexture())
-        {
-            if (pixel.a == 0)
-            {
-                pixel = Color::black;
-            }
-        }
-        for (unsigned x = 13; x < (294 + 13); x++)
-        {
-            for (unsigned y = (200 - 13); y > (200 - (100 + 13)); y--)
-            {
-                tex.SetPixel(x, y, glm::vec4{0});
-            }
-        }
-        for (unsigned x = 13; x < (294 + 13); x++)
-        {
-            tex.SetPixel(x, (200 - (100 + 13)), Color::frameMaroon);
-            tex.SetPixel(x, (200 - 13), Color::frameMaroon);
-        }
-            for (unsigned y = (200 - 13); y > (200 - (100 + 14)); y--)
-        {
-            tex.SetPixel(12, y, Color::frameMaroon);
-            tex.SetPixel(294 + 13, y, Color::frameMaroon);
-        }
+        Gui::PrepareMainViewBackground(tex);
     }
 
     for (const auto& [bmx, pal] : {
