@@ -186,12 +186,16 @@ void TextureFactory::AddToTextureStore(
             }
             else
             {
+                Logging::LogSpam(__FUNCTION__) << "No substitute image " << i
+                    << " for BMX: " << bmx << " (looked for " << path << "), using proprietary\n";
                 AddToTextureStore(store, images[i], palette);
             }
         }
     }
     else
     {
+        Logging::LogSpam(__FUNCTION__) << "No substitute for BMX: " << bmx
+            << " (looked for " << baseName << ext << "), using proprietary\n";
         AddToTextureStore(store, images, palette);
     }
 }
@@ -214,6 +218,8 @@ void TextureFactory::AddScreenToTextureStore(
     }
     else
     {
+        Logging::LogSpam(__FUNCTION__) << "No substitute for SCX: " << scx
+            << " (looked for " << baseName << ".PNG), using proprietary\n";
         const auto palette = Palette{std::string{pal}};
         auto fb = FileBufferFactory::Get()
             .CreateDataBuffer(std::string{scx});
@@ -280,6 +286,8 @@ void TextureFactory::AddTerrainToTextureStore(
     }
 
     // Fallback: proprietary ZxxL.SCX slice (unchanged, incl. strip-0 shuffle).
+    Logging::LogSpam(__FUNCTION__) << "No substitute terrain for: " << scx
+        << " (looked for " << baseName << ".PNG), using proprietary slice\n";
     auto* pixels = terrain.GetPixels();
     auto width = terrain.GetWidth();
 

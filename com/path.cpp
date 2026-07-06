@@ -68,7 +68,8 @@ void Paths::SetModDirectory(std::string path)
 
 void Paths::SetAssets4kDirectory(std::string path)
 {
-    Logging::LogInfo(__FUNCTION__) << "Overriding Assets4k path to: " << path << "\n";
+    Logging::LogInfo(__FUNCTION__) << "Assets4k path set to: " << path
+        << " (resolves to " << std::filesystem::weakly_canonical(path).string() << ")\n";
     mAssets4kDirectoryPath = path;
 }
 
