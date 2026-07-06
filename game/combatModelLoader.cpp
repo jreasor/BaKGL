@@ -134,7 +134,18 @@ void CombatModelLoader::LoadMonsterSprites(BAK::MonsterIndex m)
     }
 
     auto renderData = Graphics::RenderData{};
-    renderData.LoadData(objects, textureStore.GetTextures(), textureStore.GetMaxDim());
+    // Task 3.1 (final rollout): 4K monster art now has a load path (Task 1.8), so
+    // upload the combat sprite array with mipmapped linear filtering. Wrap is
+    // ClampToEdge (combat sprites are individual cutouts, not tiles -- unlike the
+    // zone/terrain RenderData caller which keeps the Repeat default). The filter
+    // applies to the whole shared array, so remaining proprietary low-res combat
+    // sprites are bilinearly smoothed until their 4K substitutes land.
+    renderData.LoadData(
+        objects,
+        textureStore.GetTextures(),
+        textureStore.GetMaxDim(),
+        Graphics::FilterMode::LinearMipmap,
+        Graphics::WrapMode::ClampToEdge);
     mCombatModelDatas.emplace_back(
         std::make_optional(
             CombatModelData{
