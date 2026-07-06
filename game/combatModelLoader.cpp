@@ -74,9 +74,13 @@ void CombatModelLoader::LoadMonsterSprites(BAK::MonsterIndex m)
     {
         std::stringstream ss{};
         ss << prefix << +suffix << ".BMX";
-        auto fb = BAK::FileBufferFactory::Get().CreateDataBuffer(ss.str());
+        const auto bmxName = ss.str();
+        auto fb = BAK::FileBufferFactory::Get().CreateDataBuffer(bmxName);
         const auto images = BAK::LoadImages(fb);
-        BAK::TextureFactory::AddToTextureStore(textureStore, images, pal);
+        // Task 1.8: per-variant 4K substitute seam. The color-swap is already
+        // baked into `pal` for the proprietary fallback; a substitute PNG (final
+        // RGBA colors) bypasses the palette entirely. See textureFactory.cpp.
+        BAK::TextureFactory::AddToTextureStore(textureStore, bmxName, images, pal, monster.mColorSwap);
     };
 
     std::vector<std::size_t> offsets{0};

@@ -12,6 +12,7 @@ add_executable(bakTest
     skillTest.cpp
     templeTest.cpp
     terrainSubstituteTest.cpp
+    combatSubstituteTest.cpp
     )
 
 target_link_libraries(bakTest

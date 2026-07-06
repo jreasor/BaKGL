@@ -200,6 +200,73 @@ void TextureFactory::AddToTextureStore(
     }
 }
 
+// Combat/monster-sprite substitution (Task 1.8). Mirrors the multi-image BMX
+// substitution but with per-color-swap variant naming, and a palette-OBJECT
+// fallback (the caller's already-swapped palette) so the proprietary fallback
+// keeps each monster's correct per-monster colors. The per-monster color-swap
+// (CS<N>.DAT, a palette-index remap) cannot be applied to a pre-baked RGBA
+// substitute (no palette indices), so 4K art must be generated per variant:
+//   cs <= 9  -> assets4k/<base>_CS<N>.BMX/<i>.PNG  (e.g. GNT1_CS4.BMX/0.PNG..)
+//   cs  > 9  -> assets4k/<base>.BMX/<i>.PNG        (cs=255 = no swap)
+// STRICT fallback (design decision 2026-07-05): a cs<=9 variant missing its 4K
+// art falls back to the proprietary swapped sprite, NEVER to a different
+// variant's 4K art — the swap is the SOLE visual differentiator for ~5 monster
+// families (gnt/wyv/ogr/mor/rog), so falling back to the non-variant 4K art
+// would collapse them. No OOM risk: substitutes flow through PNGToTexture ->
+// LoadAndCapPNG (Task 1.2 cap). See ROADMAP §1.8.
+void TextureFactory::AddToTextureStore(
+    Graphics::TextureStore& store,
+    std::string_view bmx,
+    const std::vector<Image>& images,
+    const Palette& palette,
+    unsigned colorSwap)
+{
+    auto baseName = SplitString(".", std::string(bmx))[0];
+    const auto variantBase = (colorSwap <= 9)
+        ? (baseName + "_CS" + std::to_string(colorSwap))
+        : baseName;
+    const auto ext = images.size() > 1 ? ".BMX" : ".PNG";
+    auto substitute = FindSubstitute(variantBase, ext);
+
+    if (substitute && images.size() == 1)
+    {
+        auto tex = PNGToTexture(substitute->string(), images.back().GetWidth(), images.back().GetHeight());
+        Logging::LogDebug(__FUNCTION__) << "Found substitute combat BMX: " << *substitute
+          << " Dims: (" << tex.GetWidth() << ", " << tex.GetHeight() << ") TargetDims: ("
+          << tex.GetTargetWidth() << ", " << tex.GetTargetHeight() << ")\n";
+        store.AddTexture(tex);
+    }
+    else if (substitute)
+    {
+        for (unsigned i = 0; i < images.size(); i++)
+        {
+            std::stringstream name{};
+            name << i << ".PNG";
+            auto path = *substitute / name.str();
+            if (std::filesystem::exists(path))
+            {
+                auto tex = PNGToTexture(path.string(), images[i].GetWidth(), images[i].GetHeight());
+                Logging::LogDebug(__FUNCTION__) << "Found substitute combat BMX: " << path
+                  << " Dims: (" << tex.GetWidth() << ", " << tex.GetHeight() << ") TargetDims: ("
+                  << tex.GetTargetWidth() << ", " << tex.GetTargetHeight() << ")\n";
+                store.AddTexture(tex);
+            }
+            else
+            {
+                Logging::LogSpam(__FUNCTION__) << "No substitute image " << i
+                    << " for combat BMX: " << bmx << " (looked for " << path << "), using proprietary\n";
+                AddToTextureStore(store, images[i], palette);
+            }
+        }
+    }
+    else
+    {
+        Logging::LogSpam(__FUNCTION__) << "No substitute for combat BMX: " << bmx
+            << " (looked for " << variantBase << ext << "), using proprietary\n";
+        AddToTextureStore(store, images, palette);
+    }
+}
+
 void TextureFactory::AddScreenToTextureStore(
     Graphics::TextureStore& store,
     std::string_view scx,
