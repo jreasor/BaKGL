@@ -10,10 +10,13 @@
 #include "com/png.hpp"
 #include "com/path.hpp"
 #include "com/string.hpp"
+#include "com/stb_image_resize2.h"
 
 #include "graphics/texture.hpp"
+#include "graphics/graphicsConfig.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <filesystem>
 #include <optional>
 #include <string>
@@ -49,9 +52,44 @@ Graphics::Texture ImageToTexture(const Image& image, const Palette& palette)
 
 Graphics::Texture PNGToTexture(std::string path, unsigned targetWidth, unsigned targetHeight)
 {
-    const auto image = LoadPNG(path.c_str());
-    const auto width = image.mWidth;
-    const auto height = image.mHeight;
+    auto image = LoadPNG(path.c_str());
+    auto width = image.mWidth;
+    auto height = image.mHeight;
+
+    // Memory isolation (ROADMAP §1 blocker #1): a single oversized substitute PNG in a
+    // shared TextureStore drives maxDim — and thus the GL_TEXTURE_2D_ARRAY allocation —
+    // to that dimension (a 4096px sheet is ~16 GiB). Downscale to the configured cap before
+    // the texture enters any store. STBIR_RGBA is non-premultiplied, so stbir alpha-weights
+    // internally; RGB is treated as sRGB, alpha as linear — correct for straight-alpha RGBA8.
+    const auto cap = Graphics::GraphicsConfig::Get().GetMaxTextureDim();
+    if (cap > 0 && (width > cap || height > cap))
+    {
+        const auto scale = static_cast<float>(cap) / std::max(width, height);
+        const auto newW = std::max(1u, static_cast<unsigned>(std::lround(width  * scale)));
+        const auto newH = std::max(1u, static_cast<unsigned>(std::lround(height * scale)));
+        std::vector<PNGColor> resized(static_cast<std::size_t>(newW) * newH);
+        if (stbir_resize_uint8_srgb(
+                reinterpret_cast<const unsigned char*>(image.mPixels.data()),
+                static_cast<int>(width),  static_cast<int>(height), 0,
+                reinterpret_cast<unsigned char*>(resized.data()),
+                static_cast<int>(newW),   static_cast<int>(newH),   0,
+                STBIR_RGBA))
+        {
+            Logging::LogInfo(__FUNCTION__) << "Downscaled substitute " << path
+                << " (" << width << "x" << height << ") -> ("
+                << newW << "x" << newH << ") cap=" << cap << "\n";
+            image.mPixels = std::move(resized);
+            width = newW;
+            height = newH;
+        }
+        else
+        {
+            Logging::LogError(__FUNCTION__) << "stbir_resize_uint8_srgb failed for " << path
+                << " (" << width << "x" << height << ") -> (" << newW << "x" << newH
+                << "); using uncapped texture (shared-sheet OOM risk)\n";
+        }
+    }
+
     const auto Get = [&](int x, int y){
         return image.mPixels[y * width + x];
     };

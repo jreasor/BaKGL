@@ -26,6 +26,7 @@ extern "C" {
 #include "graphics/inputHandler.hpp"
 #include "graphics/guiRenderer.hpp"
 #include "graphics/glfw.hpp"
+#include "graphics/graphicsConfig.hpp"
 #include "graphics/renderer.hpp"
 #include "graphics/sprites.hpp"
 
@@ -206,6 +207,8 @@ int main(int argc, char** argv)
     {
         Paths::Get().SetAssets4kDirectory(config.mPaths.mAssets4k);
     }
+
+    Graphics::GraphicsConfig::Get().SetMaxTextureDim(config.mGraphics.mMaxTextureDim);
 
     {
         const auto defaultDialog = (Paths::Get().GetBakDirectoryPath() / "dialogMods").string();

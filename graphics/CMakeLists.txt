@@ -6,6 +6,7 @@ add_library(graphics
     framebuffer.hpp framebuffer.cpp
     glfw.hpp glfw.cpp
     glm.hpp
+    graphicsConfig.hpp graphicsConfig.cpp
     guiRenderer.hpp guiRenderer.cpp
     guiTypes.hpp guiTypes.cpp
     inputHandler.hpp inputHandler.cpp

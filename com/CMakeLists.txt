@@ -8,7 +8,9 @@ add_library(com
     png.hpp png.cpp pngWrite.cpp
     random.hpp random.cpp
     string.hpp string.cpp
+    resize.cpp
     stb_image.h
+    stb_image_resize2.h
     stb_image_write.h
     visit.hpp
     ostream.hpp

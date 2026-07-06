@@ -24,6 +24,7 @@ struct Graphics
     bool mDebugDisableFades{false};
     bool mDebugRenderEncounters{false};
     int mDrawDistance{128000};
+    unsigned mMaxTextureDim{2048};
 };
 
 struct Logging

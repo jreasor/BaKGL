@@ -2,7 +2,7 @@
     "Paths": {
         "Shaders": "",
         "Saves": "",
-        "GameData": "",
+        "GameData": "game_files/",
         "GraphicsOverrides": "",
         "Assets4k": "assets_4k/"
     },
@@ -11,6 +11,7 @@
         "EnableShadows": true,
         "EnableImGui": false,
         "DrawDistance": 128000,
+        "MaxTextureDim": 2048,
         "DebugDisableFades": false,
         "DebugRenderEncounters": false
     },
