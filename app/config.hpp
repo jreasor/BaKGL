@@ -11,6 +11,7 @@ struct Paths
     std::string mSaves{};
     std::string mGameData{};
     std::string mGraphicsOverrides{};
+    std::string mAssets4k{};
     std::string mDialogMods{};
     std::string mLuaMods{};
 };

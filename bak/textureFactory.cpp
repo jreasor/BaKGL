@@ -15,6 +15,7 @@
 
 #include <algorithm>
 #include <filesystem>
+#include <optional>
 #include <string>
 #include <random>
 
@@ -70,6 +71,24 @@ Graphics::Texture PNGToTexture(std::string path, unsigned targetWidth, unsigned 
     return Graphics::Texture{texture, width, height, targetWidth, targetHeight};
 }
 
+static std::optional<std::filesystem::path> FindSubstitute(
+    const std::string& baseName,
+    const std::string& ext)
+{
+    const auto fileName = baseName + ext;
+    const auto& assets4k = Paths::Get().GetAssets4kDirectoryPath();
+    if (!assets4k.empty())
+    {
+        const auto path = assets4k / fileName;
+        if (std::filesystem::exists(path))
+            return path;
+    }
+    const auto modDir = Paths::Get().GetModDirectoryPath() / fileName;
+    if (std::filesystem::exists(modDir))
+        return modDir;
+    return std::nullopt;
+}
+
 Graphics::TextureStore TextureFactory::MakeTextureStore(
     std::string_view bmx,
     std::string_view pal)
@@ -91,28 +110,27 @@ void TextureFactory::AddToTextureStore(
     const auto images = LoadImages(fb);
 
     auto baseName = SplitString(".", std::string(bmx))[0];
-    auto substitute = images.size() > 1
-        ? Paths::Get().GetModDirectoryPath() / (baseName + ".BMX")
-        : Paths::Get().GetModDirectoryPath() / (baseName + ".PNG");
-    if (std::filesystem::exists(substitute) && images.size() == 1)
+    const auto ext = images.size() > 1 ? ".BMX" : ".PNG";
+    auto substitute = FindSubstitute(baseName, ext);
+    if (substitute && images.size() == 1)
     {
-        auto tex = PNGToTexture(substitute.string(), images.back().GetWidth(), images.back().GetHeight());
-        Logging::LogDebug(__FUNCTION__) << "Found substitute BMX: " << substitute
+        auto tex = PNGToTexture(substitute->string(), images.back().GetWidth(), images.back().GetHeight());
+        Logging::LogDebug(__FUNCTION__) << "Found substitute BMX: " << *substitute
           << " Dims: (" << tex.GetWidth() << ", " << tex.GetHeight() << ") TargetDims: ("
           << tex.GetTargetWidth() << ", " << tex.GetTargetHeight() << ")\n";
         store.AddTexture(tex);
     }
-    else if (std::filesystem::exists(substitute))
+    else if (substitute)
     {
         for (unsigned i = 0; i < images.size(); i++)
         {
             std::stringstream name{};
             name << i << ".PNG";
-            auto path = substitute / name.str();
+            auto path = *substitute / name.str();
             if (std::filesystem::exists(path))
             {
                 auto tex = PNGToTexture(path.string(), images[i].GetWidth(), images[i].GetHeight());
-                Logging::LogDebug(__FUNCTION__) << "Found substitute BMX: " << path 
+                Logging::LogDebug(__FUNCTION__) << "Found substitute BMX: " << path
                   << " Dims: (" << tex.GetWidth() << ", " << tex.GetHeight() << ") TargetDims: ("
                   << tex.GetTargetWidth() << ", " << tex.GetTargetHeight() << ")\n";
                 store.AddTexture(tex);
@@ -135,15 +153,15 @@ void TextureFactory::AddScreenToTextureStore(
     std::string_view pal)
 {
     auto baseName = SplitString(".", std::string(scx))[0];
-    auto substitute = Paths::Get().GetModDirectoryPath() / (baseName + ".PNG");
+    auto substitute = FindSubstitute(baseName, ".PNG");
 
-    if (std::filesystem::exists(substitute))
+    if (substitute)
     {
         auto fb = FileBufferFactory::Get()
             .CreateDataBuffer(std::string{scx});
         auto target = LoadScreenResource(fb);
-        Logging::LogDebug(__FUNCTION__) << "Found substitute SCX: " << substitute << "\n";
-        store.AddTexture(PNGToTexture(substitute.string(), target.GetWidth(), target.GetHeight()));
+        Logging::LogDebug(__FUNCTION__) << "Found substitute SCX: " << *substitute << "\n";
+        store.AddTexture(PNGToTexture(substitute->string(), target.GetWidth(), target.GetHeight()));
     }
     else
     {

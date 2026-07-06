@@ -3,7 +3,8 @@
         "Shaders": "",
         "Saves": "",
         "GameData": "",
-        "GraphicsOverrides": ""
+        "GraphicsOverrides": "",
+        "Assets4k": "assets_4k/"
     },
     "Graphics": {
         "ResolutionScale": 4.0,

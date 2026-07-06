@@ -44,6 +44,16 @@ std::string Paths::GetModDirectory() const
     return GetModDirectoryPath().string();
 }
 
+std::filesystem::path Paths::GetAssets4kDirectoryPath() const
+{
+    return mAssets4kDirectoryPath;
+}
+
+std::string Paths::GetAssets4kDirectory() const
+{
+    return GetAssets4kDirectoryPath().string();
+}
+
 void Paths::SetBakDirectory(std::string path)
 {
     Logging::LogInfo(__FUNCTION__) << "Overriding BAK path to: " << path << "\n";
@@ -56,8 +66,15 @@ void Paths::SetModDirectory(std::string path)
     mModDirectoryPath = path;
 }
 
+void Paths::SetAssets4kDirectory(std::string path)
+{
+    Logging::LogInfo(__FUNCTION__) << "Overriding Assets4k path to: " << path << "\n";
+    mAssets4kDirectoryPath = path;
+}
+
 Paths::Paths()
 :
     mBakDirectoryPath{std::filesystem::path{GetHomeDirectory()} / "bak"},
-    mModDirectoryPath{""}
+    mModDirectoryPath{""},
+    mAssets4kDirectoryPath{""}
 {}

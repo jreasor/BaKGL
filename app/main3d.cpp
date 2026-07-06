@@ -202,6 +202,11 @@ int main(int argc, char** argv)
         Paths::Get().SetModDirectory(config.mPaths.mGraphicsOverrides);
     }
 
+    if (!config.mPaths.mAssets4k.empty())
+    {
+        Paths::Get().SetAssets4kDirectory(config.mPaths.mAssets4k);
+    }
+
     {
         const auto defaultDialog = (Paths::Get().GetBakDirectoryPath() / "dialogMods").string();
         auto dialogsDir = config.mPaths.mDialogMods.empty()
