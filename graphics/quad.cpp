@@ -38,14 +38,25 @@ Quad::Quad(
         std::invoke([&](){
             const auto maxU = width / maxDim;
             const auto maxV = height / maxDim;
+            // Task 3.1 half-texel inset: each sprite is a width×height sub-rect
+            // of a maxDim×maxDim array layer sampled with GL_LINEAR, so UV=maxU
+            // /maxV blends the right/bottom edge texels with the transparent
+            // padding beyond width/height (a fringe on full-frame backgrounds).
+            // Pull those edges in by half a texel to sample the sprite's own
+            // edge-texel centers. Left/top (UV=0) sit at the layer border, handled
+            // by GL_CLAMP_TO_EDGE. Skip when the sprite fills the layer (==1) --
+            // CLAMP_TO_EDGE handles those borders and maxDim==1 would collapse.
+            // No-op for GL_NEAREST (same edge texel either way).
+            const auto inset = 0.5 / maxDim;
+            const auto u1 = (maxU < 1.0) ? maxU - inset : maxU;
+            const auto v1 = (maxV < 1.0) ? maxV - inset : maxV;
             return std::vector<glm::vec3>{
-                {0,       0, textureIndex},
-                {0,    maxV, textureIndex},
-                {maxU, maxV, textureIndex},
-                {0,       0, textureIndex},
-                {maxU, maxV, textureIndex},
-                {maxU,    0, textureIndex}};
-
+                {0,    0,  textureIndex},
+                {0,    v1, textureIndex},
+                {u1,   v1, textureIndex},
+                {0,    0,  textureIndex},
+                {u1,   v1, textureIndex},
+                {u1,   0,  textureIndex}};
         }),
         {0, 1, 2, 3, 4, 5}}
 {}
