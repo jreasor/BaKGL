@@ -28,7 +28,7 @@ public:
     void BindGL() const;
     void UnbindGL() const;
     
-    void LoadTexturesGL(const TextureStore& textures);
+    void LoadTexturesGL(const TextureStore& textures, FilterMode filter = FilterMode::Nearest);
 
     std::size_t size();
 

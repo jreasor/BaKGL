@@ -108,7 +108,7 @@ Backgrounds::Backgrounds(
 
     spriteManager
         .GetSpriteSheet(mSpriteSheet)
-        .LoadTexturesGL(textures);
+        .LoadTexturesGL(textures, Graphics::FilterMode::LinearMipmap);
 }
 
 

@@ -283,16 +283,26 @@ void TextureBuffer::MakePickBuffer(unsigned width, unsigned height)
 
 void TextureBuffer::LoadTexturesGL(
     const std::vector<Texture>& textures,
-    unsigned maxDim)
+    unsigned maxDim,
+    FilterMode filter)
 {
     if (textures.size() > sMaxTextures)
         throw std::runtime_error("Too many textures");
 
     BindGL();
 
+    // Mip storage must be allocated up front for immutable-format textures. The old
+    // levels=1 allocation is why the historical glGenerateMipmap call below produced
+    // nothing useful (the "Doesn't actually look very good with mipmaps..." note).
+    unsigned levels = 1;
+    if (filter == FilterMode::LinearMipmap)
+    {
+        for (auto d = maxDim; d > 1; d >>= 1) ++levels;
+    }
+
     glTexStorage3D(
         mTextureType,
-        1,              // levels
+        levels,         // mip levels: 1 for Nearest, full chain for LinearMipmap
         GL_RGBA8,       // Internal format
         maxDim, maxDim, // width,height
         sMaxTextures     // Number of layers
@@ -324,16 +334,23 @@ void TextureBuffer::LoadTexturesGL(
         index++;
     }
     
-    // Doesn't actually look very good with mipmaps...
-    //glGenerateMipmap(mTextureType);
-    constexpr auto interpolation = GL_NEAREST;
-    //constexpr auto interpolation = GL_LINEAR;
-    constexpr auto extend = GL_REPEAT;
-    //constexpr auto extend = GL_CLAMP_TO_BORDER;
-    glTexParameteri(mTextureType, GL_TEXTURE_WRAP_S, extend);   
-    glTexParameteri(mTextureType, GL_TEXTURE_WRAP_T, extend);
-    glTexParameteri(mTextureType, GL_TEXTURE_MIN_FILTER, interpolation);
-    glTexParameteri(mTextureType, GL_TEXTURE_MAG_FILTER, interpolation);
+    if (filter == FilterMode::LinearMipmap)
+    {
+        glGenerateMipmap(mTextureType);
+        glTexParameteri(mTextureType, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glTexParameteri(mTextureType, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        // Screens don't tile; clamp to edge so the wrapped-fill padding doesn't bleed
+        // into the visible sub-rect at coarse mip levels.
+        glTexParameteri(mTextureType, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(mTextureType, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    }
+    else
+    {
+        glTexParameteri(mTextureType, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(mTextureType, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameteri(mTextureType, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(mTextureType, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    }
     
     UnbindGL();
 }

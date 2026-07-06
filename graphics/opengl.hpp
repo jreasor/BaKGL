@@ -179,6 +179,12 @@ private:
     bool mActive;
 };
 
+enum class FilterMode
+{
+    Nearest,
+    LinearMipmap,
+};
+
 class TextureBuffer
 {
 public:
@@ -203,7 +209,8 @@ public:
 
     void LoadTexturesGL(
         const std::vector<Texture>& textures,
-        unsigned maxDim);
+        unsigned maxDim,
+        FilterMode filter = FilterMode::Nearest);
 
 private:
     GLuint mTextureBuffer;

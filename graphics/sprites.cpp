@@ -56,11 +56,12 @@ void Sprites::UnbindGL() const
     mTextureBuffer.UnbindGL();
 }
 
-void Sprites::LoadTexturesGL(const TextureStore& textures)
+void Sprites::LoadTexturesGL(const TextureStore& textures, FilterMode filter)
 {
     mTextureBuffer.LoadTexturesGL(
         textures.GetTextures(),
-        textures.GetMaxDim());
+        textures.GetMaxDim(),
+        filter);
 
     // Normal quad for use as arbitrary rectangle
     mObjects.AddObject(Quad{1.0, 1.0, 1.0, 0});
