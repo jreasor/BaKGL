@@ -59,6 +59,10 @@ struct Graphics
     // Default 4 = on (a clear quality win on oblique terrain, a free no-op on
     // head-on GUI screens / billboarded combat sprites). Configurable 0..16.
     float mAnisotropicFilter{4.0};
+    // Task 4.4: ON = use original 1993 art (no assets_4k/ substitution); OFF = 4K remaster.
+    // Gates FindSubstitute (textureFactory.cpp). Best-effort at runtime: affects
+    // subsequently-loaded textures only. Persisted by SaveGraphicsValues.
+    bool mOriginalMode{false};
 };
 
 struct Logging

@@ -44,6 +44,7 @@ Graphics LoadGraphics(const nlohmann::json& config)
         graphics.mRGBA8Upload = c.value("RGBA8Upload", false);
         graphics.mAsyncTextureUpload = c.value("AsyncTextureUpload", false);
         graphics.mAnisotropicFilter = c.value("AnisotropicFilter", 4.0);
+        graphics.mOriginalMode = c.value("OriginalMode", false);
         if (c.contains("HeroTextures"))
         {
             for (const auto& hero : c["HeroTextures"])
@@ -176,10 +177,19 @@ bool SaveGraphicsValues(const std::string& configPath, const Graphics& g)
         const std::regex re{"\"" + key + "\"\\s*:\\s*[0-9]+(?:\\.[0-9]+)?"};
         s = std::regex_replace(s, re, "\"" + key + "\": " + val);
     };
+    // Bool sibling: the numeric regex above won't match true/false literals, so
+    // bool keys need their own per-line replace. Same preserve-everything-else
+    // contract (only the matched key's value changes; comments + formatting survive).
+    const auto replaceBool = [](std::string& s, const std::string& key, bool val)
+    {
+        const std::regex re{"\"" + key + "\"\\s*:\\s*(?:true|false)"};
+        s = std::regex_replace(s, re, "\"" + key + "\": " + (val ? "true" : "false"));
+    };
 
     replaceValue(contents, "ResolutionScale", fmtFloat(g.mResolutionScale));
     replaceValue(contents, "MaxTextureDim", std::to_string(g.mMaxTextureDim));
     replaceValue(contents, "AnisotropicFilter", fmtFloat(g.mAnisotropicFilter));
+    replaceBool(contents, "OriginalMode", g.mOriginalMode);
 
     std::ofstream out{configPath, std::ios::out | std::ios::trunc};
     if (!out.is_open())

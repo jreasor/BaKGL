@@ -103,12 +103,50 @@ void GraphicsConfig::SetAnisotropicFilter(float level)
     mAnisotropicFilter = level;
 }
 
+bool GraphicsConfig::GetOriginalMode() const
+{
+    return mOriginalMode;
+}
+
+void GraphicsConfig::SetOriginalMode(bool enabled)
+{
+    Logging::LogInfo(__FUNCTION__) << "OriginalMode = "
+        << (enabled ? "true" : "false") << "\n";
+    mOriginalMode = enabled;
+}
+
+float GraphicsConfig::GetResolutionScale() const
+{
+    return mResolutionScale;
+}
+
+void GraphicsConfig::SetResolutionScale(float scale)
+{
+    // Mirror main3d's clamp so a misconfigured value can't make a sub-native
+    // (or 0x0) window; the actual window resize happens only at boot.
+    if (scale < 1.0f) scale = 1.0f;
+    Logging::LogInfo(__FUNCTION__) << "ResolutionScale = " << scale << "\n";
+    mResolutionScale = scale;
+}
+
+const std::string& GraphicsConfig::GetConfigPath() const
+{
+    return mConfigPath;
+}
+
+void GraphicsConfig::SetConfigPath(const std::string& path)
+{
+    mConfigPath = path;
+}
+
 GraphicsConfig::GraphicsConfig()
 :   mMaxTextureDim{2048},
     mMaxTextures{256},
     mRGBA8Upload{false},
     mAsyncTextureUpload{false},
-    mAnisotropicFilter{4.0f}
+    mAnisotropicFilter{4.0f},
+    mOriginalMode{false},
+    mResolutionScale{4.0f}
 {}
 
 }

@@ -103,12 +103,14 @@ Options Parse(int argc, char** argv)
 Config::Config LoadConfigFile(std::string configPath)
 {
     auto config = Config::Config{};
-    auto TryLoad = [&config](std::string path)
+    std::string loadedPath;
+    auto TryLoad = [&config,&loadedPath](std::string path)
     {
         try
         {
             std::cout << "Loading config file: " << path << std::endl;
             config = Config::LoadConfig(path);
+            loadedPath = path;
             return "";
         }
         catch (const std::exception& error)
@@ -137,6 +139,12 @@ Config::Config LoadConfigFile(std::string configPath)
     {
         std::cout << "Not loading a config file.\n";
     }
+
+    // Task 4.4: record the actually-loaded config path so the in-game settings
+    // screen can persist graphics values back to it without a ctor param. Empty
+    // if no config was loaded (the screen logs + no-ops on an empty path).
+    if (!loadedPath.empty())
+        Graphics::GraphicsConfig::Get().SetConfigPath(loadedPath);
 
     return config;
 }
@@ -215,6 +223,11 @@ int main(int argc, char** argv)
     Graphics::GraphicsConfig::Get().SetAsyncTextureUpload(config.mGraphics.mAsyncTextureUpload);
     Graphics::GraphicsConfig::Get().SetHeroTextures(config.mGraphics.mHeroTextures);
     Graphics::GraphicsConfig::Get().SetAnisotropicFilter(config.mGraphics.mAnisotropicFilter);
+    // Task 4.4: Original-mode gate (FindSubstitute) + the editable ResolutionScale
+    // copy the settings screen reads/writes. Window size still comes from config
+    // directly below (line ~253); the singleton holds the persisted-for-next-boot copy.
+    Graphics::GraphicsConfig::Get().SetOriginalMode(config.mGraphics.mOriginalMode);
+    Graphics::GraphicsConfig::Get().SetResolutionScale(config.mGraphics.mResolutionScale);
 
     {
         const auto defaultDialog = (Paths::Get().GetBakDirectoryPath() / "dialogMods").string();

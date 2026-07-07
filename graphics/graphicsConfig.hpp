@@ -70,6 +70,24 @@ public:
     float GetAnisotropicFilter() const;
     void SetAnisotropicFilter(float level);
 
+    // Task 4.4: ON = use original 1993 art (no assets_4k/ substitution). Gates
+    // FindSubstitute (textureFactory.cpp). Set at startup from config + updated at
+    // runtime by the settings screen (best-effort: affects subsequently-loaded
+    // textures only -- already-loaded ones refresh on zone change / restart).
+    bool GetOriginalMode() const;
+    void SetOriginalMode(bool enabled);
+
+    // Task 4.4: UI-scaling knob (multiplies 320x200 -> window). Consumed once at
+    // window creation in main3d; the settings screen reads/writes this editable copy
+    // and persists it for next boot. Held here so the screen needs no ctor threading.
+    float GetResolutionScale() const;
+    void SetResolutionScale(float scale);
+
+    // Task 4.4: path of the actually-loaded config.json, recorded by LoadConfigFile
+    // so the settings screen can call SaveGraphicsValues without a ctor param.
+    const std::string& GetConfigPath() const;
+    void SetConfigPath(const std::string& path);
+
 private:
     GraphicsConfig();
 
@@ -79,6 +97,9 @@ private:
     bool mAsyncTextureUpload;
     std::unordered_set<std::string> mHeroTextures;
     float mAnisotropicFilter;
+    bool mOriginalMode;
+    float mResolutionScale;
+    std::string mConfigPath;
 };
 
 }

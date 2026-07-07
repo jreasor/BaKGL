@@ -71,6 +71,7 @@ add_subdirectory(inventory)
 add_subdirectory(combat)
 
 target_link_libraries(gui
+    app
     audio
     bak
     com

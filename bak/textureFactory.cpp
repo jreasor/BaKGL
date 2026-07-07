@@ -130,6 +130,15 @@ static std::optional<std::filesystem::path> FindSubstitute(
     const std::string& baseName,
     const std::string& ext)
 {
+    // Task 4.4 "Original" toggle: when on, skip every assets_4k/mod substitute so
+    // the engine renders the original 1993 proprietary art. This is the single
+    // chokepoint for all 4 substitution seams (BMX, combat, SCX, terrain), so one
+    // check here makes every seam fall back to the proprietary decoder. Best-effort
+    // at runtime: affects textures loaded AFTER the flip (next zone / restart);
+    // already-loaded substitutes stay until their store is rebuilt.
+    if (Graphics::GraphicsConfig::Get().GetOriginalMode())
+        return std::nullopt;
+
     const auto fileName = baseName + ext;
     const auto& assets4k = Paths::Get().GetAssets4kDirectoryPath();
     if (!assets4k.empty())

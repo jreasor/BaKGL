@@ -53,6 +53,8 @@
         // screens and billboarded combat sprites have isotropic footprints, so
         // this is a free no-op there and a quality win on terrain). Default 4.
         "AnisotropicFilter": 4.0,
+        // Task 4.4: ON = use original 1993 art (no assets_4k/ substitution); OFF = 4K remaster.
+        "OriginalMode": false,
         "DebugDisableFades": false,
         "DebugRenderEncounters": false
     },
