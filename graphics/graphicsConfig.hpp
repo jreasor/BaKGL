@@ -61,6 +61,15 @@ public:
     bool IsHero(const std::string& baseName) const;
     void SetHeroTextures(const std::vector<std::string>& heroes);
 
+    // Task 3.5: anisotropic filtering level applied to LinearMipmap textures
+    // (GL_TEXTURE_MAX_ANISOTROPY_EXT). 0 = off (plain trilinear); >0 clamped to
+    // the driver's GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT at apply time. Engages
+    // where the sample footprint is anisotropic -- oblique terrain/ground
+    // (head-on GUI screens and billboarded combat sprites are an isotropic-
+    // footprint no-op).
+    float GetAnisotropicFilter() const;
+    void SetAnisotropicFilter(float level);
+
 private:
     GraphicsConfig();
 
@@ -69,6 +78,7 @@ private:
     bool mRGBA8Upload;
     bool mAsyncTextureUpload;
     std::unordered_set<std::string> mHeroTextures;
+    float mAnisotropicFilter;
 };
 
 }

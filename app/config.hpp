@@ -54,6 +54,11 @@ struct Graphics
     // the MaxTextureDim cap and get a dedicated one-layer sheet at the substitute's
     // full uncapped resolution. Empty = today's behavior (all substitutes capped).
     std::vector<std::string> mHeroTextures{};
+    // Task 3.5: anisotropic filtering level for LinearMipmap textures
+    // (GL_TEXTURE_MAX_ANISOTROPY_EXT). 0 = off; >0 clamped to the driver max.
+    // Default 4 = on (a clear quality win on oblique terrain, a free no-op on
+    // head-on GUI screens / billboarded combat sprites). Configurable 0..16.
+    float mAnisotropicFilter{4.0};
 };
 
 struct Logging

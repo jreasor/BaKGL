@@ -41,6 +41,7 @@ Graphics LoadGraphics(const nlohmann::json& config)
         graphics.mMaxTextures = c.value("MaxTextures", 256);
         graphics.mRGBA8Upload = c.value("RGBA8Upload", false);
         graphics.mAsyncTextureUpload = c.value("AsyncTextureUpload", false);
+        graphics.mAnisotropicFilter = c.value("AnisotropicFilter", 4.0);
         if (c.contains("HeroTextures"))
         {
             for (const auto& hero : c["HeroTextures"])

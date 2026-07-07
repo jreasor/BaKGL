@@ -88,11 +88,27 @@ void GraphicsConfig::SetHeroTextures(const std::vector<std::string>& heroes)
         << " entries\n";
 }
 
+float GraphicsConfig::GetAnisotropicFilter() const
+{
+    return mAnisotropicFilter;
+}
+
+void GraphicsConfig::SetAnisotropicFilter(float level)
+{
+    // 0 = off (plain trilinear); clamp negatives to 0 so a misconfigured value
+    // can't request a negative anisotropy. The clamp to the driver's reported
+    // GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT happens at apply time (opengl.cpp).
+    if (level < 0.0f) level = 0.0f;
+    Logging::LogInfo(__FUNCTION__) << "AnisotropicFilter = " << level << "\n";
+    mAnisotropicFilter = level;
+}
+
 GraphicsConfig::GraphicsConfig()
 :   mMaxTextureDim{2048},
     mMaxTextures{256},
     mRGBA8Upload{false},
-    mAsyncTextureUpload{false}
+    mAsyncTextureUpload{false},
+    mAnisotropicFilter{4.0f}
 {}
 
 }

@@ -46,6 +46,13 @@
         // Empty list = today's behavior (all substitutes capped to MaxTextureDim).
         // Increment A lands this inert; Increment B populates it. See ROADMAP §3.2.
         "HeroTextures": [],
+        // Task 3.5: anisotropic filtering level for LinearMipmap textures
+        // (GL_TEXTURE_MAX_ANISOTROPY_EXT). 0 = off (plain trilinear); >0 clamped
+        // to the driver's reported max. Engages where the sample footprint is
+        // anisotropic -- oblique terrain/ground in the 3D world (head-on GUI
+        // screens and billboarded combat sprites have isotropic footprints, so
+        // this is a free no-op there and a quality win on terrain). Default 4.
+        "AnisotropicFilter": 4.0,
         "DebugDisableFades": false,
         "DebugRenderEncounters": false
     },

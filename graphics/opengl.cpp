@@ -10,6 +10,7 @@
 
 #include <GL/glew.h>
 
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <optional>
@@ -275,6 +276,29 @@ void TextureBuffer::MakePickBuffer(unsigned width, unsigned height)
     VramTracker::Get().AccountViewport(width, height, 16, "pick");
 }
 
+// Task 3.5: GL_EXT_texture_filter_anisotropic capability probe (cached after
+// the first call). Returns the max anisotropy the driver supports, or 0 if the
+// extension is unavailable (aniso then silently skipped -- plain trilinear,
+// today's behavior). Queried lazily so GL/GLEW are guaranteed initialized by
+// the first LinearMipmap upload.
+static float MaxSupportedAnisotropy()
+{
+    static const float kMax = []{
+        if (!glewIsSupported("GL_EXT_texture_filter_anisotropic"))
+        {
+            Logging::LogInfo("Anisotropy")
+                << "GL_EXT_texture_filter_anisotropic not supported; "
+                << "anisotropic filtering disabled\n";
+            return 0.0f;
+        }
+        float maxA = 0.0f;
+        glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &maxA);
+        Logging::LogInfo("Anisotropy") << "Driver max anisotropy = " << maxA << "\n";
+        return maxA;
+    }();
+    return kMax;
+}
+
 //void TextureBuffer::MakeTexture2DArray()
 //{
 //    BindGL();
@@ -500,6 +524,24 @@ void TextureBuffer::LoadTexturesGL(
         const auto wrapMode = (wrap == WrapMode::Repeat) ? GL_REPEAT : GL_CLAMP_TO_EDGE;
         glTexParameteri(mTextureType, GL_TEXTURE_WRAP_S, wrapMode);
         glTexParameteri(mTextureType, GL_TEXTURE_WRAP_T, wrapMode);
+
+        // Task 3.5: anisotropic filtering. A no-op under GL_NEAREST (which is
+        // why this lives in the LinearMipmap branch only). Engages where the
+        // sample footprint is anisotropic -- oblique terrain/ground in the 3D
+        // world; head-on GUI screens and billboarded combat sprites have
+        // isotropic footprints, so this is a free no-op there and a quality win
+        // on terrain (the ROADMAP 3.5 goal). Level from GraphicsConfig (0=off),
+        // clamped to the driver's reported max.
+        const auto requestedAniso = GraphicsConfig::Get().GetAnisotropicFilter();
+        if (requestedAniso > 0.0f)
+        {
+            const auto maxAniso = MaxSupportedAnisotropy();
+            if (maxAniso > 0.0f)
+            {
+                glTexParameterf(mTextureType, GL_TEXTURE_MAX_ANISOTROPY_EXT,
+                    std::min(requestedAniso, maxAniso));
+            }
+        }
     }
     else
     {
