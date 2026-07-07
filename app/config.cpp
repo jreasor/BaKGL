@@ -5,6 +5,8 @@
 #include <filesystem>
 #include <iostream>
 #include <fstream>
+#include <regex>
+#include <sstream>
 
 namespace Config {
 
@@ -131,6 +133,63 @@ Config LoadConfig(std::string path)
     std::cout << "Loaded config file: " << data <<"\n";
 
     return config;
+}
+
+bool SaveGraphicsValues(const std::string& configPath, const Graphics& g)
+{
+    if (configPath.empty() || !std::filesystem::exists(configPath))
+    {
+        std::cerr << "SaveGraphicsValues: config path not found: " << configPath << "\n";
+        return false;
+    }
+
+    std::ifstream in{configPath, std::ios::in};
+    if (!in.is_open())
+    {
+        std::cerr << "SaveGraphicsValues: could not open config for read: " << configPath << "\n";
+        return false;
+    }
+    std::stringstream ss;
+    ss << in.rdbuf();
+    in.close();
+    std::string contents = ss.str();
+
+    // Float formatter: shortest decimal that always keeps a decimal point, so an
+    // integer-valued float still writes "4.0"/"0.0" (matches the style config.json
+    // ships and round-trips as a float, not an int).
+    const auto fmtFloat = [](float v) -> std::string
+    {
+        std::ostringstream os;
+        os << v;
+        std::string s = os.str();
+        if (s.find('.') == std::string::npos) s += ".0";
+        return s;
+    };
+    // Per-key value replace. Matches "Key" : <number> (number = int or float
+    // literal) and rewrites just the number -- leading whitespace, the trailing
+    // comma, and any inline comment survive because the regex does not consume
+    // them. ECMAScript backref $1 = the captured key. Only the 3 owned keys are
+    // touched; every other line (comments, formatting, other sections) is left
+    // byte-identical so the extensive config.json comments are preserved.
+    const auto replaceValue = [](std::string& s, const std::string& key, const std::string& val)
+    {
+        const std::regex re{"\"" + key + "\"\\s*:\\s*[0-9]+(?:\\.[0-9]+)?"};
+        s = std::regex_replace(s, re, "\"" + key + "\": " + val);
+    };
+
+    replaceValue(contents, "ResolutionScale", fmtFloat(g.mResolutionScale));
+    replaceValue(contents, "MaxTextureDim", std::to_string(g.mMaxTextureDim));
+    replaceValue(contents, "AnisotropicFilter", fmtFloat(g.mAnisotropicFilter));
+
+    std::ofstream out{configPath, std::ios::out | std::ios::trunc};
+    if (!out.is_open())
+    {
+        std::cerr << "SaveGraphicsValues: could not open config for write: " << configPath << "\n";
+        return false;
+    }
+    out << contents;
+    out.close();
+    return true;
 }
 
 }

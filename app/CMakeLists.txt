@@ -4,6 +4,8 @@ add_library(app
 
 target_link_libraries(app com)
 
+add_subdirectory(test)
+
 list(APPEND APP_BINARIES
     #decomp_ttm
     dialog_explorer

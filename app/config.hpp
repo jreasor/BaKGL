@@ -96,4 +96,12 @@ struct Config
 
 Config LoadConfig(std::string path);
 
+// Task 4.4: persist the 3 graphics knobs the in-game settings screen owns
+// (ResolutionScale, MaxTextureDim, AnisotropicFilter) back to config.json by
+// surgical per-line replacement -- preserves comments + formatting (a full
+// nlohmann::json rewrite would strip the extensive config.json comments).
+// Only the 3 owned numeric values change; every other line is untouched.
+// Returns false if the path is missing/unreadable (no-op; caller logs).
+bool SaveGraphicsValues(const std::string& configPath, const Graphics& g);
+
 }
