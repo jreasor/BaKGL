@@ -14,6 +14,7 @@ add_executable(bakTest
     terrainSubstituteTest.cpp
     combatSubstituteTest.cpp
     mainViewCutoutTest.cpp
+    vramBudgetTest.cpp
     )
 
 target_link_libraries(bakTest

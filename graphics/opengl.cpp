@@ -1,12 +1,14 @@
 #include "graphics/opengl.hpp"
 
 #include "graphics/texture.hpp"
+#include "graphics/vramTracker.hpp"
 
 #include "com/assert.hpp"
 #include "com/logger.hpp"
 
 #include <GL/glew.h>
 
+#include <chrono>
 #include <cmath>
 
 namespace Graphics {
@@ -253,6 +255,7 @@ void TextureBuffer::MakeDepthBuffer(unsigned width, unsigned height)
     glTexParameteri(mTextureType, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(mTextureType, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(mTextureType, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    VramTracker::Get().AccountViewport(width, height, 4, "depth");
 }
 
 void TextureBuffer::MakePickBuffer(unsigned width, unsigned height)
@@ -266,6 +269,7 @@ void TextureBuffer::MakePickBuffer(unsigned width, unsigned height)
         GL_RGBA, GL_FLOAT, nullptr);
     glTexParameteri(mTextureType, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(mTextureType, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    VramTracker::Get().AccountViewport(width, height, 16, "pick");
 }
 
 //void TextureBuffer::MakeTexture2DArray()
@@ -331,6 +335,21 @@ void TextureBuffer::LoadTexturesGL(
     );
 
 
+    const bool mipmapped = (filter == FilterMode::LinearMipmap);
+    VramTracker::Get().Account(
+        maxDim,
+        static_cast<unsigned>(layerCount),
+        mipmapped,
+        "upload");
+
+    // Task 3.3 increment A: split the upload cost into three segments so the
+    // zone-load hitch can be attributed. PBOs (increment D) only address the
+    // glTexSubImage3D segment; glGenerateMipmap and the GetPixel fill are not
+    // PBO-acceleratable, so this split is the go/no-go gate for D's value.
+    using Clock = std::chrono::steady_clock;
+    auto fillTime = Clock::duration{0};
+    auto uploadTime = Clock::duration{0};
+
     unsigned index = 0;
     for (const auto& tex : textures)
     {
@@ -340,25 +359,38 @@ void TextureBuffer::LoadTexturesGL(
 
         // Chuck the image in the padded sized texture
         // GetPixel() will wrap and fill the texture
-        for (unsigned x = 0; x < maxDim; x++)
-            for (unsigned y = 0; y < maxDim; y++)
-                paddedTex[x + y * maxDim] = tex.GetPixel(x, y);
+        {
+            const auto t0 = Clock::now();
+            for (unsigned x = 0; x < maxDim; x++)
+                for (unsigned y = 0; y < maxDim; y++)
+                    paddedTex[x + y * maxDim] = tex.GetPixel(x, y);
+            fillTime += Clock::now() - t0;
+        }
 
-        glTexSubImage3D(
-            mTextureType,
-            0,                 // Mipmap number
-            0, 0, index,       // xoffset, yoffset, zoffset
-            maxDim, maxDim, 1, // width, height, depth
-            GL_RGBA,           // format
-            GL_FLOAT,          // type
-            paddedTex.data()); // pointer to data
+        {
+            const auto t0 = Clock::now();
+            glTexSubImage3D(
+                mTextureType,
+                0,                 // Mipmap number
+                0, 0, index,       // xoffset, yoffset, zoffset
+                maxDim, maxDim, 1, // width, height, depth
+                GL_RGBA,           // format
+                GL_FLOAT,          // type
+                paddedTex.data()); // pointer to data
+            uploadTime += Clock::now() - t0;
+        }
 
         index++;
     }
     
+    auto mipmapTime = Clock::duration{0};
     if (filter == FilterMode::LinearMipmap)
     {
-        glGenerateMipmap(mTextureType);
+        {
+            const auto t0 = Clock::now();
+            glGenerateMipmap(mTextureType);
+            mipmapTime += Clock::now() - t0;
+        }
         glTexParameteri(mTextureType, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
         glTexParameteri(mTextureType, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         // Task 3.1: wrap is caller-controlled. GUI screens don't tile (ClampToEdge,
@@ -377,6 +409,13 @@ void TextureBuffer::LoadTexturesGL(
         glTexParameteri(mTextureType, GL_TEXTURE_WRAP_S, GL_REPEAT);
         glTexParameteri(mTextureType, GL_TEXTURE_WRAP_T, GL_REPEAT);
     }
+
+    using ms = std::chrono::duration<double, std::milli>;
+    Logging::LogDebug("VRAM") << "LoadTexturesGL: maxDim=" << maxDim
+        << " layers=" << layerCount
+        << " fill=" << ms(fillTime).count() << "ms"
+        << " upload=" << ms(uploadTime).count() << "ms"
+        << " mipmap=" << ms(mipmapTime).count() << "ms\n";
     
     UnbindGL();
 }

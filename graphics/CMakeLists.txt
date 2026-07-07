@@ -20,6 +20,7 @@ add_library(graphics
     sprites.hpp sprites.cpp
     texture.hpp texture.cpp
     types.hpp
+    vramTracker.hpp vramTracker.cpp
 )
 
 target_link_libraries(

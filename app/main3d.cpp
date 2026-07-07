@@ -29,6 +29,7 @@ extern "C" {
 #include "graphics/graphicsConfig.hpp"
 #include "graphics/renderer.hpp"
 #include "graphics/sprites.hpp"
+#include "graphics/vramTracker.hpp"
 
 #include "gui/guiManager.hpp"
 #include "gui/window.hpp"
@@ -515,6 +516,11 @@ int main(int argc, char** argv)
         ImguiWrapper::Initialise(window.get());
         imGuiInitialised = true;
     }
+
+    // Task 3.3 increment A: all boot TextureStores (Cursor, FontManager, Actors,
+    // Backgrounds, Icons, Renderer depth/pick, CombatModelLoader sprites) are
+    // now resident. Snapshot the boot VRAM budget before the render loop.
+    Graphics::VramTracker::Get().LogTotal("boot");
 
     do
     {

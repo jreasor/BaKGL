@@ -10,6 +10,7 @@
 #include "bak/combat/combatModel.hpp"
 #include "bak/camera.hpp"
 #include "graphics/glm.hpp"
+#include "graphics/vramTracker.hpp"
 #include <glm/gtx/norm.hpp>
 #include "bak/combat/mechanics.hpp"
 
@@ -138,6 +139,12 @@ void GameRunner::LoadZoneData(BAK::ZoneNumber zone)
         // 4K terrain + world-object textures. Wrap defaults to Repeat (RenderData)
         // so the tiled ground doesn't seam at coarse mip levels.
         Graphics::FilterMode::LinearMipmap);
+    // Task 3.3 increment A: report resident texture VRAM after the zone upload.
+    // mZoneRenderData is a unique_ptr reassigned here, so the previous zone's GL
+    // textures were freed by RAII before this upload (one zone resident at a
+    // time). The running total therefore reflects boot + this zone.
+    Graphics::VramTracker::Get().LogTotal(
+        "zone " + std::to_string(static_cast<unsigned>(zone.mValue)));
     LoadSystems();
     mCamera.SetGameLocation(mGameState.GetLocation());
 }
