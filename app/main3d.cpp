@@ -527,6 +527,19 @@ int main(int argc, char** argv)
 
     do
     {
+        // macOS Retina: the framebuffer is HiDPI-scaled (e.g. 2x) relative to the
+        // window size GLFW reports. The default-FB viewport must use the framebuffer
+        // size, not the window size, or in-game content renders into the bottom-left
+        // quarter. The camera + pick buffer keep window-size 1280x800 (aspect 1.6 ==
+        // FB aspect 1.6), so only the viewport changes -- no projection math touched.
+        int fbW = 0, fbH = 0;
+        glfwGetFramebufferSize(window.get(), &fbW, &fbH);
+        if (fbW <= 0 || fbH <= 0)
+        {
+            fbW = static_cast<int>(width);
+            fbH = static_cast<int>(height);
+        }
+
         currentTime = glfwGetTime();
 
         deltaTime = float(currentTime - lastTime);
@@ -594,7 +607,7 @@ int main(int argc, char** argv)
                 lightCamera);
             renderer.EndDepthMapDraw();
 
-            glViewport(0, 0, static_cast<GLsizei>(width), static_cast<GLsizei>(height));
+            glViewport(0, 0, fbW, fbH);
             // Dark blue background
             glClearColor(ambient * 0.15f, ambient * 0.31f, ambient * 0.36f, 0.0f);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -666,6 +679,12 @@ int main(int argc, char** argv)
         }
 
         //// { *** Draw 2D GUI ***
+        // DrawForPicking set the viewport to the 1280x800 pick buffer; restore the
+        // default-FB viewport before the GUI draw so it fills the window. Sync the
+        // GUI scissor to the HiDPI framebuffer so ClipRegion widgets (compass, scroll
+        // lists) clip at the right pixels.
+        glViewport(0, 0, fbW, fbH);
+        guiRenderer.SetFramebufferSize(fbW, fbH);
         guiRenderer.RenderGui(&root);
 
         // { *** IMGUI START ***
@@ -758,7 +777,7 @@ int main(int argc, char** argv)
      
         glfwSwapBuffers(window.get());
     }
-    while (glfwGetKey(window.get(), GLFW_KEY_ESCAPE) != GLFW_PRESS 
+    while (glfwGetKey(window.get(), GLFW_KEY_ESCAPE) != GLFW_PRESS
         && glfwWindowShouldClose(window.get()) == 0);
 
     if (showImgui)

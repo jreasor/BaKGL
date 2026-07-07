@@ -66,13 +66,22 @@ void GuiCamera::ScissorRegion(glm::vec2 topLeft, glm::vec2 dimensions)
     // Bottom in terms of glScissor is going to be:
     // screenHeight - scaledBottom
     // Because we need to account for the bottom starting
-    // at the height of the screen
+    // at the height of the screen.
+    // glScissor is in raw framebuffer pixels (independent of glViewport), so
+    // multiply by mFbScale{X,Y} to track the viewport-stretched GUI content on a
+    // HiDPI framebuffer (1.0 on non-Retina = byte-identical to the old formula).
     glScissor(
-        topLeft.x * mScale,
-        mHeight - (topLeft.y + dimensions.y)*mScale,
-        dimensions.x * mScale,
-        dimensions.y * mScale);
+        topLeft.x * mScale * mFbScaleX,
+        mHeight * mFbScaleY - (topLeft.y + dimensions.y) * mScale * mFbScaleY,
+        dimensions.x * mScale * mFbScaleX,
+        dimensions.y * mScale * mFbScaleY);
     glEnable(GL_SCISSOR_TEST);
+}
+
+void GuiCamera::SetFramebufferSize(int fbW, int fbH)
+{
+    mFbScaleX = mWidth  > 0.0f ? fbW / mWidth  : 1.0f;
+    mFbScaleY = mHeight > 0.0f ? fbH / mHeight : 1.0f;
 }
 
 void GuiCamera::DisableScissor()
@@ -115,6 +124,11 @@ void GuiRenderer::RenderGui(
     mLogger.Spam() << "Rendered Gui, Calls: " << mRenderCalls << "\n";
     mSpriteManager.DeactivateSpriteSheet();
     glEnable(GL_DEPTH_TEST);
+}
+
+void GuiRenderer::SetFramebufferSize(int fbW, int fbH)
+{
+    mCamera.SetFramebufferSize(fbW, fbH);
 }
 
 void GuiRenderer::RenderGuiImpl(
