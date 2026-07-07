@@ -83,6 +83,20 @@ public:
     bool InCombatView() const override;
     void EnterMainView() override;
     void EnterMainMenu(bool gameRunning) override;
+    void MoveForward() override;
+    void MoveBackward() override;
+    void RotateLeft() override;
+    void RotateRight() override;
+    void ToggleSnapToRoad() override;
+
+    // App-set movement callbacks (ROADMAP 4.5). Assigned by main3d.cpp; MainView
+    // triggers them via the IGuiManager movement methods above. Public so the app
+    // can wire them to the camera it owns — same pattern as mMainView.
+    std::function<void()> mOnMoveForward;
+    std::function<void()> mOnMoveBackward;
+    std::function<void()> mOnRotateLeft;
+    std::function<void()> mOnRotateRight;
+
     void PartyDied(BAK::Target dialog) override;
 
     void TeleportToGDS(
@@ -187,6 +201,7 @@ private:
     std::function<void()> mEndFadeFunction;
     std::function<void()> mCutsceneFinished;
     std::function<void()> mOnEnterMainView;
+    bool mSnapToRoadOn{false};
     std::function<void(BAK::CombatResult)> mCombatFinishedCallback;
     std::vector<std::unique_ptr<GDSScene>> mGdsScenes;
 

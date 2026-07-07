@@ -25,6 +25,15 @@ public:
     virtual void EnterMainView() = 0;
     virtual void EnterMainMenu(bool gameRunning) = 0;
 
+    // Main-view movement + compass buttons (ROADMAP 4.5). GuiManager forwards
+    // these to app-set callbacks (mOnMoveForward, ...) so the GUI can drive the
+    // app-owned camera without a hard dependency on it.
+    virtual void MoveForward() = 0;
+    virtual void MoveBackward() = 0;
+    virtual void RotateLeft() = 0;
+    virtual void RotateRight() = 0;
+    virtual void ToggleSnapToRoad() = 0;
+
     virtual void EnterGDSScene(
         const BAK::HotspotRef&,
         std::function<void()>&& finished) = 0;

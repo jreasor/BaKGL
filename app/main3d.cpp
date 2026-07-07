@@ -403,6 +403,14 @@ int main(int argc, char** argv)
             cameraPtr->RotateRight();
             guiManager.mMainView.SetHeading(cameraPtr->GetHeading());
         }});
+
+    // MainView movement/compass buttons -> camera (ROADMAP 4.5). Mirror the
+    // keyboard binds above; MainView triggers these via the IGuiManager methods.
+    guiManager.mOnMoveForward  = [&]{ if (InputAllowed()){ cameraPtr->MoveForward();  UpdateGameTile(); } };
+    guiManager.mOnMoveBackward = [&]{ if (InputAllowed()){ cameraPtr->MoveBackward(); UpdateGameTile(); } };
+    guiManager.mOnRotateLeft   = [&]{ if (InputAllowed()){ cameraPtr->RotateLeft();   guiManager.mMainView.SetHeading(cameraPtr->GetHeading()); } };
+    guiManager.mOnRotateRight  = [&]{ if (InputAllowed()){ cameraPtr->RotateRight();  guiManager.mMainView.SetHeading(cameraPtr->GetHeading()); } };
+
     inputHandler.Bind(GLFW_KEY_Z, [&]{ if (InputAllowed()){cameraPtr->StrafeUp();     UpdateGameTile();}});
     inputHandler.Bind(GLFW_KEY_V, [&]{ if (InputAllowed()){cameraPtr->StrafeDown();   UpdateGameTile();}});
     inputHandler.Bind(GLFW_KEY_X, [&]{ if (InputAllowed()) cameraPtr->RotateVerticalUp(); });

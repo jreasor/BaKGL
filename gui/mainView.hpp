@@ -33,6 +33,8 @@ public:
 
     static constexpr auto sForward = 2;
     static constexpr auto sBackward = 1;
+    static constexpr auto sRotateLeft = 0;
+    static constexpr auto sRotateRight = 3;
     static constexpr auto sSnapToRoad = 4;
     static constexpr auto sFullMap = 5;
     static constexpr auto sCast = 6;
@@ -54,6 +56,7 @@ public:
     void ShowPortrait(BAK::ActiveCharIndex character);
     void ShowInventory(BAK::ActiveCharIndex character);
     void SetCanSaveBookmark(bool can);
+    void SetCompassVisible(bool visible);
     [[nodiscard]] bool OnMouseEvent(const MouseEvent& event) override;
 private:
     void AddChildren();
@@ -71,6 +74,7 @@ private:
     std::vector<ClickButtonImage> mCharacters;
 
     bool mCanSaveBookmark{false};
+    bool mShowCompass{true};
     bool mShowingBookmarkDialog{false};
     bool mNeedRefresh{false};
     ClickButton mBookmarkPopup;

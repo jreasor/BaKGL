@@ -74,6 +74,7 @@ MainView::MainView(
         switch (widget.mWidget)
         {
         case 3: //REQ_IMAGEBUTTON
+        case 4: //REQ_IMAGEBUTTON toggle variant (e.g. sSnapToRoad)
         {
             const auto textures = icons.GetButtonTextures(widget.mImage);
             const auto& button = icons.GetButton(widget.mImage);
@@ -129,6 +130,21 @@ void MainView::HandleButton(unsigned buttonIndex)
     case sMainMenu:
         mGuiManager.EnterMainMenu(true);
         break;
+    case sForward:
+        mGuiManager.MoveForward();
+        break;
+    case sBackward:
+        mGuiManager.MoveBackward();
+        break;
+    case sRotateLeft:
+        mGuiManager.RotateLeft();
+        break;
+    case sRotateRight:
+        mGuiManager.RotateRight();
+        break;
+    case sSnapToRoad:
+        mGuiManager.ToggleSnapToRoad();
+        break;
     default:
         break;
     }
@@ -138,6 +154,15 @@ void MainView::SetCanSaveBookmark(bool canSaveBookmark)
 {
     mCanSaveBookmark = canSaveBookmark;
     mNeedRefresh = true;
+}
+
+void MainView::SetCompassVisible(bool visible)
+{
+    if (mShowCompass != visible)
+    {
+        mShowCompass = visible;
+        AddChildren();
+    }
 }
 
 bool MainView::OnMouseEvent(const MouseEvent& event)
@@ -259,7 +284,13 @@ void MainView::AddChildren()
     {
         AddChildBack(&spell);
     }
-    AddChildBack(&mCompass);
+
+    // Compass is hidden whenever a sub-screen is pushed on top of MainView so it
+    // can't peek through dialogs that don't cover the compass box (ROADMAP 4.5).
+    if (mShowCompass)
+    {
+        AddChildBack(&mCompass);
+    }
 
     for (auto& character : mCharacters)
         AddChildBack(&character);

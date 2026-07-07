@@ -263,6 +263,17 @@ void GuiManager::EnterMainView()
     });
 }
 
+void GuiManager::MoveForward()  { if (mOnMoveForward)  mOnMoveForward(); }
+void GuiManager::MoveBackward() { if (mOnMoveBackward) mOnMoveBackward(); }
+void GuiManager::RotateLeft()   { if (mOnRotateLeft)   mOnRotateLeft(); }
+void GuiManager::RotateRight()  { if (mOnRotateRight)  mOnRotateRight(); }
+
+void GuiManager::ToggleSnapToRoad()
+{
+    mSnapToRoadOn = !mSnapToRoadOn;
+    mLogger.Info() << "SnapToRoad toggled: " << std::boolalpha << mSnapToRoadOn << "\n";
+}
+
 void GuiManager::EnterMainMenu(bool gameRunning)
 {
     DoFade(1.0, [this, gameRunning]{
@@ -702,6 +713,7 @@ void GuiManager::PushScreen(Widget* screen)
         CacheState();
     }
     mScreenStack.PushScreen(screen);
+    mMainView.SetCompassVisible(InMainView());
 }
 
 ScopeGuard<std::function<void()>> GuiManager::PopScreen()
@@ -711,6 +723,7 @@ ScopeGuard<std::function<void()>> GuiManager::PopScreen()
     mScreenStack.PopScreen();
     return ScopeGuard<std::function<void()>>([this]{
         mLogger.Info() << "Scope guard fired after pop screen. InMainView? " << std::boolalpha << InMainView() << "\n";
+        mMainView.SetCompassVisible(InMainView());
         if (InMainView() && !mAmInMainView)
         {
             if (mCombatSequenceActive)
