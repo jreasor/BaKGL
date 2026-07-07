@@ -12,6 +12,7 @@
 
 #include <chrono>
 #include <cmath>
+#include <optional>
 
 namespace Graphics {
 
@@ -355,11 +356,63 @@ void TextureBuffer::LoadTexturesGL(
     auto fillTime = Clock::duration{0};
     auto uploadTime = Clock::duration{0};
 
+    const bool async = GraphicsConfig::Get().GetAsyncTextureUpload();
     const bool rgba8 = GraphicsConfig::Get().GetRGBA8Upload();
+
+    // Task 3.3-D: one PBO reused per layer via per-layer orphaning. Function-
+    // local (not a TextureBuffer member) so non-async stores pay no
+    // glGenBuffers/glDeleteBuffers and TextureBuffer's hand-written move
+    // ctor/assign is untouched. std::optional lazily constructs it only on the
+    // async path (the ctor touches GL).
+    std::optional<PixelUnpackBuffer> unpackPbo;
+    if (async) unpackPbo.emplace();
+
     unsigned index = 0;
     for (const auto& tex : textures)
     {
-        if (rgba8)
+        if (async)
+        {
+            // Task 3.3-D: async PBO path. Reuses C's BuildRgba8Staging (the
+            // "identical pixels" guarantee is unit-tested in textureUploadTest),
+            // stages the RGBA8 bytes in the PBO, then issues glTexSubImage3D
+            // with data=nullptr so the driver enqueues a GPU-side copy from the
+            // bound PBO and returns instead of blocking the render thread on
+            // the transfer. Per layer, Allocate (glBufferData with null) orphans
+            // the previous layer's storage so the driver returns fresh PBO
+            // memory rather than syncing on a buffer the GPU may still read.
+            // Only the `upload` segment is PBO-acceleratable (A's timer split):
+            // fill is CPU (BuildRgba8Staging), mipmap is glGenerateMipmap (GPU
+            // sync at loop end) -- both unchanged, so this is an async
+            // *foundation*, not a zone-hitch fix.
+            std::vector<std::uint8_t> staging;
+            {
+                const auto t0 = Clock::now();
+                staging = BuildRgba8Staging(tex, maxDim);
+                fillTime += Clock::now() - t0;
+            }
+
+            {
+                const auto t0 = Clock::now();
+                const auto layerBytes = static_cast<GLsizeiptr>(staging.size());
+                unpackPbo->Allocate(layerBytes, GL_STREAM_DRAW);   // per-layer orphan + size
+                unpackPbo->SubData(0, layerBytes, staging.data()); // fill the PBO
+                // glTexSubImage3D reads from the bound GL_PIXEL_UNPACK_BUFFER;
+                // the RAII guard binds the PBO for the read and guarantees the
+                // unpack target is clear on scope exit (a left-bound PBO would
+                // corrupt a later client-pointer glTexSubImage3D).
+                BoundPixelUnpackBuffer bound{*unpackPbo};
+                glTexSubImage3D(
+                    mTextureType,
+                    0,                 // Mipmap number
+                    0, 0, index,       // xoffset, yoffset, zoffset
+                    maxDim, maxDim, 1, // width, height, depth
+                    GL_RGBA,           // format
+                    GL_UNSIGNED_BYTE,  // type -- RGBA8 bytes already in the PBO
+                    nullptr);          // read from the bound unpack PBO
+                uploadTime += Clock::now() - t0;
+            }
+        }
+        else if (rgba8)
         {
             // Task 3.3-C (opt-in): RGBA8 staging. BuildRgba8Staging tiles the
             // texture into a maxDim*maxDim RGBA8 buffer (4 B/px) via GetPixel's
@@ -524,6 +577,93 @@ GLuint PixelPackBuffer::GenBufferGL()
     GLuint buffer;
     glGenBuffers(1, &buffer);
     return buffer;
+}
+
+PixelUnpackBuffer::PixelUnpackBuffer()
+:
+    mBuffer{GenBufferGL()},
+    mActive{true}
+{}
+
+PixelUnpackBuffer::PixelUnpackBuffer(PixelUnpackBuffer&& other) noexcept
+{
+    (*this) = std::move(other);
+}
+
+PixelUnpackBuffer& PixelUnpackBuffer::operator=(PixelUnpackBuffer&& other) noexcept
+{
+    if (this == &other) return *this;
+    mBuffer = other.mBuffer;
+    // Copy the active flag too: PixelPackBuffer::operator= omits this, leaving
+    // a move-constructed object's mActive indeterminate -> a moved-from buffer
+    // can leak its GL name (dtor skips) or double-free (garbage=true). Correct
+    // it here so the function-local std::optional<PixelUnpackBuffer> path is
+    // safe under move.
+    mActive = other.mActive;
+    other.mActive = false;
+    return *this;
+}
+
+PixelUnpackBuffer::~PixelUnpackBuffer()
+{
+    if (mActive)
+    {
+        Logging::LogDebug("GLBuffers") << "Deleting pixel unpack buffer id: " << mBuffer << " @" << this << "\n";
+        glDeleteBuffers(1, &mBuffer);
+    }
+}
+
+void PixelUnpackBuffer::BindGL() const
+{
+    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, mBuffer);
+}
+
+void PixelUnpackBuffer::UnbindGL() const
+{
+    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+}
+
+GLuint PixelUnpackBuffer::GetId() const
+{
+    return mBuffer;
+}
+
+void PixelUnpackBuffer::Allocate(GLsizeiptr size, GLenum usage)
+{
+    // Orphan + size: glBufferData with null re-specifies the store so the
+    // driver can hand back fresh storage instead of syncing on the previous
+    // layer's contents. Self-bind/unbind mirrors PixelPackBuffer::Allocate.
+    BindGL();
+    glBufferData(GL_PIXEL_UNPACK_BUFFER, size, nullptr, usage);
+    UnbindGL();
+}
+
+void PixelUnpackBuffer::SubData(GLintptr offset, GLsizeiptr size, const void* data)
+{
+    // Fill a range of the bound PBO (no re-specify). Pairs with Allocate (which
+    // reserved the storage) and the glTexSubImage3D(nullptr) read.
+    BindGL();
+    glBufferSubData(GL_PIXEL_UNPACK_BUFFER, offset, size, data);
+    UnbindGL();
+}
+
+GLuint PixelUnpackBuffer::GenBufferGL()
+{
+    GLuint buffer;
+    glGenBuffers(1, &buffer);
+    return buffer;
+}
+
+BoundPixelUnpackBuffer::BoundPixelUnpackBuffer(const PixelUnpackBuffer& pbo)
+:
+    mPbo{pbo}
+{
+    mPbo.BindGL();
+}
+
+BoundPixelUnpackBuffer::~BoundPixelUnpackBuffer()
+{
+    mPbo.UnbindGL();
 }
 
 }

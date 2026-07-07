@@ -212,6 +212,7 @@ int main(int argc, char** argv)
     Graphics::GraphicsConfig::Get().SetMaxTextureDim(config.mGraphics.mMaxTextureDim);
     Graphics::GraphicsConfig::Get().SetMaxTextures(config.mGraphics.mMaxTextures);
     Graphics::GraphicsConfig::Get().SetRGBA8Upload(config.mGraphics.mRGBA8Upload);
+    Graphics::GraphicsConfig::Get().SetAsyncTextureUpload(config.mGraphics.mAsyncTextureUpload);
     Graphics::GraphicsConfig::Get().SetHeroTextures(config.mGraphics.mHeroTextures);
 
     {

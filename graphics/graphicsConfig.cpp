@@ -63,6 +63,18 @@ void GraphicsConfig::SetRGBA8Upload(bool enabled)
     mRGBA8Upload = enabled;
 }
 
+bool GraphicsConfig::GetAsyncTextureUpload() const
+{
+    return mAsyncTextureUpload;
+}
+
+void GraphicsConfig::SetAsyncTextureUpload(bool enabled)
+{
+    Logging::LogInfo(__FUNCTION__) << "AsyncTextureUpload = "
+        << (enabled ? "true" : "false") << "\n";
+    mAsyncTextureUpload = enabled;
+}
+
 bool GraphicsConfig::IsHero(const std::string& baseName) const
 {
     return mHeroTextures.contains(baseName);
@@ -79,7 +91,8 @@ void GraphicsConfig::SetHeroTextures(const std::vector<std::string>& heroes)
 GraphicsConfig::GraphicsConfig()
 :   mMaxTextureDim{2048},
     mMaxTextures{256},
-    mRGBA8Upload{false}
+    mRGBA8Upload{false},
+    mAsyncTextureUpload{false}
 {}
 
 }

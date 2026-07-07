@@ -262,5 +262,62 @@ private:
     bool mActive;
 };
 
+// Task 3.3-D: streaming upload PBO. Mirrors PixelPackBuffer (above) but targets
+// GL_PIXEL_UNPACK_BUFFER and takes a byte size (the upload path sizes the PBO
+// from maxDim*maxDim*4, not from a struct type). No Map/Unmap: the D path fills
+// via SubData and reads via glTexSubImage3D(data=nullptr) -- a pure
+// driver-managed DMA path with no client-pointer mapping and no fence sync.
+class PixelUnpackBuffer
+{
+public:
+    explicit PixelUnpackBuffer();
+    PixelUnpackBuffer(PixelUnpackBuffer&& other) noexcept;
+    PixelUnpackBuffer& operator=(PixelUnpackBuffer&& other) noexcept;
+    PixelUnpackBuffer(const PixelUnpackBuffer&) = delete;
+    PixelUnpackBuffer& operator=(const PixelUnpackBuffer&) = delete;
+
+    ~PixelUnpackBuffer();
+
+    void BindGL() const;
+    void UnbindGL() const;
+    GLuint GetId() const;
+
+    // Size-based (byte) orphan + reserve. glBufferData with a null data pointer
+    // re-specifies the store, orphans any prior contents and lets the driver
+    // hand back fresh storage instead of syncing on a buffer the GPU may still
+    // be reading from the previous layer. Called per layer for the streaming
+    // orphan-and-refill pattern. Mirrors PixelPackBuffer::Allocate (which is
+    // sized by sizeof(T)); the upload path sizes the PBO by byte count directly.
+    void Allocate(GLsizeiptr size, GLenum usage);
+
+    // Stage `size` bytes from `data` at `offset` into the bound PBO (no
+    // re-specify -- fills storage reserved by Allocate). Paired with a
+    // following glTexSubImage3D(data=nullptr) read from the bound PBO.
+    void SubData(GLintptr offset, GLsizeiptr size, const void* data);
+
+private:
+    static GLuint GenBufferGL();
+
+    GLuint mBuffer;
+    bool mActive;
+};
+
+// RAII bind/unbind for the unpack PBO around the glTexSubImage3D(data=nullptr)
+// read. That read pulls texels from whichever buffer is bound to
+// GL_PIXEL_UNPACK_BUFFER, so the PBO must be bound for the call -- and must be
+// unbound on scope exit: a left-bound unpack PBO would make a later
+// client-pointer glTexSubImage3D interpret the client pointer as a byte offset
+// into the still-bound PBO (corruption). Construct binds, destruct unbinds.
+class BoundPixelUnpackBuffer
+{
+public:
+    explicit BoundPixelUnpackBuffer(const PixelUnpackBuffer& pbo);
+    ~BoundPixelUnpackBuffer();
+    BoundPixelUnpackBuffer(const BoundPixelUnpackBuffer&) = delete;
+    BoundPixelUnpackBuffer& operator=(const BoundPixelUnpackBuffer&) = delete;
+private:
+    const PixelUnpackBuffer& mPbo;
+};
+
 }
 

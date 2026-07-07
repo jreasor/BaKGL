@@ -40,6 +40,20 @@ public:
     bool GetRGBA8Upload() const;
     void SetRGBA8Upload(bool enabled);
 
+    // Task 3.3-D: opt-in async PBO texture upload. Default false = synchronous
+    // upload (the C path: RGBA8 staging -> glTexSubImage3D with a client
+    // pointer, which blocks the render thread on the GPU transfer). When true,
+    // LoadTexturesGL stages the RGBA8 bytes in a PixelUnpackBuffer and issues
+    // glTexSubImage3D(data=nullptr) so the driver enqueues a GPU-side copy and
+    // returns immediately. Only the `upload` segment of A's timer split is
+    // PBO-acceleratable -- fill (CPU BuildRgba8Staging) and mipmap
+    // (glGenerateMipmap) are not -- and a single PBO with no double-buffering
+    // still syncs at glGenerateMipmap, so this is an async *foundation* +
+    // decoupled staging for a future off-thread fill / double-buffered path,
+    // not a zone-hitch fix. Falls back to the C path (RGBA8Upload) when off.
+    bool GetAsyncTextureUpload() const;
+    void SetAsyncTextureUpload(bool enabled);
+
     // Task 3.2 — hero fullscreen backgrounds: base names (no extension) that bypass
     // the MaxTextureDim cap and get a dedicated one-layer sheet at the substitute's
     // full uncapped resolution. Consulted by the SCX substitute path so the bypass
@@ -53,6 +67,7 @@ private:
     unsigned mMaxTextureDim;
     unsigned mMaxTextures;
     bool mRGBA8Upload;
+    bool mAsyncTextureUpload;
     std::unordered_set<std::string> mHeroTextures;
 };
 

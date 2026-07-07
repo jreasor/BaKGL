@@ -40,6 +40,7 @@ Graphics LoadGraphics(const nlohmann::json& config)
         graphics.mMaxTextureDim = c.value("MaxTextureDim", 2048);
         graphics.mMaxTextures = c.value("MaxTextures", 256);
         graphics.mRGBA8Upload = c.value("RGBA8Upload", false);
+        graphics.mAsyncTextureUpload = c.value("AsyncTextureUpload", false);
         if (c.contains("HeroTextures"))
         {
             for (const auto& hero : c["HeroTextures"])

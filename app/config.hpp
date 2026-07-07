@@ -40,6 +40,16 @@ struct Graphics
     // (the dominant zone-hitch cost), so it is gated off until a vectorized
     // build or Task 3.3-D's async PBO path makes it worthwhile.
     bool mRGBA8Upload{false};
+    // Task 3.3-D: opt-in async PBO texture upload. Default false = the C path
+    // (synchronous RGBA8 staging -> glTexSubImage3D with a client pointer).
+    // When true, LoadTexturesGL stages the RGBA8 bytes in a PixelUnpackBuffer
+    // and issues glTexSubImage3D(data=nullptr) so the driver enqueues a GPU-side
+    // copy instead of blocking the render thread. Only the `upload` segment of
+    // A's timer split is PBO-acceleratable (fill is CPU, mipmap is glGenerate-
+    // Mipmap), and a single PBO still syncs at glGenerateMipmap -- so this is
+    // an async foundation + decoupled staging for a future off-thread fill /
+    // double-buffered path, not a zone-hitch fix. Falls back to C when off.
+    bool mAsyncTextureUpload{false};
     // Task 3.2: base names (no extension) of fullscreen SCX backgrounds that bypass
     // the MaxTextureDim cap and get a dedicated one-layer sheet at the substitute's
     // full uncapped resolution. Empty = today's behavior (all substitutes capped).
