@@ -22,6 +22,14 @@ public:
     unsigned GetMaxTextureDim() const;
     void SetMaxTextureDim(unsigned dim);
 
+    // Task 3.3-B: ceiling on the number of layers a single TextureStore may
+    // upload into one GL_TEXTURE_2D_ARRAY (was the compile-time
+    // TextureBuffer::sMaxTextures = 256). 0 => 256 (built-in default). The
+    // LoadTexturesGL guard reads this, so the cap is data-driven via
+    // config.json -> Graphics.MaxTextures.
+    unsigned GetMaxTextures() const;
+    void SetMaxTextures(unsigned max);
+
     // Task 3.2 — hero fullscreen backgrounds: base names (no extension) that bypass
     // the MaxTextureDim cap and get a dedicated one-layer sheet at the substitute's
     // full uncapped resolution. Consulted by the SCX substitute path so the bypass
@@ -33,6 +41,7 @@ private:
     GraphicsConfig();
 
     unsigned mMaxTextureDim;
+    unsigned mMaxTextures;
     std::unordered_set<std::string> mHeroTextures;
 };
 

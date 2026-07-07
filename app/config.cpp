@@ -38,6 +38,7 @@ Graphics LoadGraphics(const nlohmann::json& config)
         graphics.mDebugRenderEncounters = c.value("DebugRenderEncounters", false);
         graphics.mDrawDistance = c.value("DrawDistance", 128000);
         graphics.mMaxTextureDim = c.value("MaxTextureDim", 2048);
+        graphics.mMaxTextures = c.value("MaxTextures", 256);
         if (c.contains("HeroTextures"))
         {
             for (const auto& hero : c["HeroTextures"])

@@ -210,6 +210,7 @@ int main(int argc, char** argv)
     }
 
     Graphics::GraphicsConfig::Get().SetMaxTextureDim(config.mGraphics.mMaxTextureDim);
+    Graphics::GraphicsConfig::Get().SetMaxTextures(config.mGraphics.mMaxTextures);
     Graphics::GraphicsConfig::Get().SetHeroTextures(config.mGraphics.mHeroTextures);
 
     {

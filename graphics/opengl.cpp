@@ -2,6 +2,7 @@
 
 #include "graphics/texture.hpp"
 #include "graphics/vramTracker.hpp"
+#include "graphics/graphicsConfig.hpp"
 
 #include "com/assert.hpp"
 #include "com/logger.hpp"
@@ -291,18 +292,21 @@ void TextureBuffer::LoadTexturesGL(
     FilterMode filter,
     WrapMode wrap)
 {
-    if (textures.size() > sMaxTextures)
+    const auto maxTexturesCap = GraphicsConfig::Get().GetMaxTextures();
+    if (textures.size() > maxTexturesCap)
     {
         // 4K doesn't raise the layer *count* (only per-texel size), but a shared
-        // TextureStore that legitimately exceeds the ceiling would overflow the
-        // GL_TEXTURE_2D_ARRAY. Fail loudly with diagnostics (ROADMAP Task 1.5) instead
-        // of the bare "Too many textures" throw. Fix is to split the store or raise
-        // sMaxTextures; allocation below is exact, so raising the ceiling is VRAM-free
-        // for stores that don't approach it.
+        // TextureStore that legitimately exceeds the configured ceiling would
+        // overflow the GL_TEXTURE_2D_ARRAY. Fail loudly with diagnostics
+        // (ROADMAP Task 1.5) instead of the bare "Too many textures" throw. Fix
+        // is to split the store or raise Graphics.MaxTextures; allocation below
+        // is exact, so raising the ceiling is VRAM-free for stores that don't
+        // approach it.
         Logging::LogError(__FUNCTION__) << "Too many textures: store has "
-            << textures.size() << " layers, cap sMaxTextures=" << sMaxTextures
+            << textures.size() << " layers, cap MaxTextures=" << maxTexturesCap
+            << " (default " << sMaxTextures << ")"
             << " (would overflow GL_TEXTURE_2D_ARRAY)."
-            << " Split the TextureStore or raise sMaxTextures.\n";
+            << " Split the TextureStore or raise Graphics.MaxTextures in config.json.\n";
         throw std::runtime_error("Too many textures (see log for store size / cap)");
     }
 
@@ -317,11 +321,11 @@ void TextureBuffer::LoadTexturesGL(
         for (auto d = maxDim; d > 1; d >>= 1) ++levels;
     }
 
-    // Allocate exactly as many layers as the store needs (>=1), not the full sMaxTextures
-    // ceiling. sMaxTextures is now a pure runaway-guard (checked above); small stores
-    // (cursor/font/icons, ~1-20 textures) no longer pre-allocate 256 layers of
-    // maxDim*maxDim*RGBA8 each. The fill loop below writes layers 0..n-1, all in range.
-    // (ROADMAP Task 1.5)
+    // Allocate exactly as many layers as the store needs (>=1), not the full
+    // configured MaxTextures ceiling. The cap is a pure runaway-guard (checked
+    // above); small stores (cursor/font/icons, ~1-20 textures) no longer
+    // pre-allocate 256 layers of maxDim*maxDim*RGBA8 each. The fill loop below
+    // writes layers 0..n-1, all in range. (ROADMAP Task 1.5)
     const auto layerCount = textures.size() > 0
         ? static_cast<GLsizei>(textures.size())
         : GLsizei{1};
@@ -331,7 +335,7 @@ void TextureBuffer::LoadTexturesGL(
         levels,         // mip levels: 1 for Nearest, full chain for LinearMipmap
         GL_RGBA8,       // Internal format
         maxDim, maxDim, // width,height
-        layerCount      // Number of layers (exact, not the sMaxTextures ceiling)
+        layerCount      // Number of layers (exact, not the configured cap)
     );
 
 

@@ -30,6 +30,27 @@ void GraphicsConfig::SetMaxTextureDim(unsigned dim)
     mMaxTextureDim = effective;
 }
 
+unsigned GraphicsConfig::GetMaxTextures() const
+{
+    return mMaxTextures;
+}
+
+void GraphicsConfig::SetMaxTextures(unsigned max)
+{
+    // 0 => "use the built-in default"; clamp to a sane floor so a misconfigured
+    // cap can't make every non-empty store throw at boot (a 1-layer store is the
+    // minimum the GL path supports).
+    constexpr unsigned kDefault = 256;
+    constexpr unsigned kFloor = 1;
+    auto effective = max;
+    if (effective == 0)
+        effective = kDefault;
+    if (effective < kFloor)
+        effective = kFloor;
+    Logging::LogInfo(__FUNCTION__) << "MaxTextures = " << effective << "\n";
+    mMaxTextures = effective;
+}
+
 bool GraphicsConfig::IsHero(const std::string& baseName) const
 {
     return mHeroTextures.contains(baseName);
@@ -44,7 +65,8 @@ void GraphicsConfig::SetHeroTextures(const std::vector<std::string>& heroes)
 }
 
 GraphicsConfig::GraphicsConfig()
-:   mMaxTextureDim{2048}
+:   mMaxTextureDim{2048},
+    mMaxTextures{256}
 {}
 
 }

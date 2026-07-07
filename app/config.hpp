@@ -25,6 +25,13 @@ struct Graphics
     bool mDebugRenderEncounters{false};
     int mDrawDistance{128000};
     unsigned mMaxTextureDim{2048};
+    // Task 3.3-B: configurable ceiling on the number of layers a single
+    // TextureStore may upload into one GL_TEXTURE_2D_ARRAY (was the hardcoded
+    // TextureBuffer::sMaxTextures = 256). 0/unset => 256 (built-in default).
+    // Raising it is VRAM-free for stores that don't approach it (allocation is
+    // exact-per-store); raise only if a logical sheet legitimately needs >256
+    // frames.
+    unsigned mMaxTextures{256};
     // Task 3.2: base names (no extension) of fullscreen SCX backgrounds that bypass
     // the MaxTextureDim cap and get a dedicated one-layer sheet at the substitute's
     // full uncapped resolution. Empty = today's behavior (all substitutes capped).

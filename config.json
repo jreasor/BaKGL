@@ -12,6 +12,13 @@
         "EnableImGui": false,
         "DrawDistance": 128000,
         "MaxTextureDim": 2048,
+        // Task 3.3-B: ceiling on the number of layers a single TextureStore may
+        // upload into one GL_TEXTURE_2D_ARRAY (was the hardcoded
+        // TextureBuffer::sMaxTextures = 256). 0/unset => 256 (built-in default).
+        // Raising it is VRAM-free for stores that don't approach it (allocation is
+        // exact-per-store); raise only if a logical sheet legitimately needs >256
+        // frames.
+        "MaxTextures": 256,
         // Task 3.2: hero fullscreen backgrounds (BASE names, no extension) get a
         // dedicated one-layer sheet at the substitute's full uncapped resolution.
         // Empty list = today's behavior (all substitutes capped to MaxTextureDim).
