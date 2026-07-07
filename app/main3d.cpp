@@ -251,6 +251,17 @@ int main(int argc, char** argv)
 
     bool showImgui = config.mGraphics.mEnableImGui;
     auto guiScalar = config.mGraphics.mResolutionScale;
+    // Task 4.1: ResolutionScale is the dynamic UI-scaling knob -- it multiplies
+    // the 320x200 logical GUI to the window (default 4.0 -> 1280x800). A
+    // non-positive value would make a 0x0 window and crash; clamp to >= 1.0
+    // (native 320x200) so a misconfigured config.json degrades gracefully
+    // instead of hard-crashing in MakeGlfwWindow.
+    if (guiScalar < 1.0f)
+    {
+        logger.Warn() << " ResolutionScale " << guiScalar
+            << " is < 1.0 (would produce a sub-native window); clamping to 1.0\n";
+        guiScalar = 1.0f;
+    }
 
     auto nativeWidth = 320.0f;
     auto nativeHeight = 200.0f;
