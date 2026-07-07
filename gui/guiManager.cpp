@@ -713,7 +713,7 @@ void GuiManager::PushScreen(Widget* screen)
         CacheState();
     }
     mScreenStack.PushScreen(screen);
-    mMainView.SetCompassVisible(InMainView());
+    mMainView.RefreshCompass();
 }
 
 ScopeGuard<std::function<void()>> GuiManager::PopScreen()
@@ -723,7 +723,7 @@ ScopeGuard<std::function<void()>> GuiManager::PopScreen()
     mScreenStack.PopScreen();
     return ScopeGuard<std::function<void()>>([this]{
         mLogger.Info() << "Scope guard fired after pop screen. InMainView? " << std::boolalpha << InMainView() << "\n";
-        mMainView.SetCompassVisible(InMainView());
+        mMainView.RefreshCompass();
         if (InMainView() && !mAmInMainView)
         {
             if (mCombatSequenceActive)

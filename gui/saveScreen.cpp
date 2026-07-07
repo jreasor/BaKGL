@@ -250,14 +250,24 @@ void SaveScreen::SaveGame(bool isBookmark)
     mSaveFn(mSaveManager.MakeSave(saveDir, saveName, isBookmark));
 }
 
-bool SaveScreen::CanSaveBookmark() const
+bool SaveScreen::CanSaveBookmark()
 {
-    return mSelectedDirectory.has_value();
+    // Bookmarking must be available on the main travel view without first opening
+    // the save UI, so ensure a target directory exists before reporting whether a
+    // bookmark is possible. The main view gates the bookmark button on this.
+    mSaveManager.RefreshSaves();
+    if (mSaveManager.GetSaves().empty())
+        mSaveManager.EnsureDefaultDirectory();
+    return !mSaveManager.GetSaves().empty();
 }
 
 const BAK::SaveFile& SaveScreen::SaveBookmark()
 {
     mSaveManager.RefreshSaves();
+    if (mSaveManager.GetSaves().empty())
+        mSaveManager.EnsureDefaultDirectory();
+    if (!mSelectedDirectory)
+        mSelectedDirectory = 0;
     const auto& dirName = mSaveManager.GetSaves().at(*mSelectedDirectory).mName;
     return mSaveManager.MakeSave(dirName, "Bookmark", true);
 }

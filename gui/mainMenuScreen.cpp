@@ -212,7 +212,7 @@ void MainMenuScreen::Load(std::string file)
     mGuiManager.ShowGameStartMap();
 }
 
-bool MainMenuScreen::CanSaveBookmark() const
+bool MainMenuScreen::CanSaveBookmark()
 {
     return mSaveScreen.CanSaveBookmark();
 }

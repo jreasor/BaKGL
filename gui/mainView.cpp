@@ -5,6 +5,7 @@
 #include "bak/gameState.hpp"
 
 #include "gui/IGuiManager.hpp"
+#include "gui/tickAnimator.hpp"
 #include "gui/backgrounds.hpp"
 #include "gui/fontManager.hpp"
 #include "gui/icons.hpp"
@@ -12,6 +13,7 @@
 #include <glm/glm.hpp>
 
 #include <iostream>
+#include <memory>
 
 namespace Gui {
 
@@ -132,15 +134,19 @@ void MainView::HandleButton(unsigned buttonIndex)
         break;
     case sForward:
         mGuiManager.MoveForward();
+        StartMovementRepeat(sForward);
         break;
     case sBackward:
         mGuiManager.MoveBackward();
+        StartMovementRepeat(sBackward);
         break;
     case sRotateLeft:
         mGuiManager.RotateLeft();
+        StartMovementRepeat(sRotateLeft);
         break;
     case sRotateRight:
         mGuiManager.RotateRight();
+        StartMovementRepeat(sRotateRight);
         break;
     case sSnapToRoad:
         mGuiManager.ToggleSnapToRoad();
@@ -156,17 +162,33 @@ void MainView::SetCanSaveBookmark(bool canSaveBookmark)
     mNeedRefresh = true;
 }
 
-void MainView::SetCompassVisible(bool visible)
+void MainView::RefreshCompass()
 {
-    if (mShowCompass != visible)
+    // A sub-screen just came up (or MainView otherwise stopped being the top
+    // screen). The AnimatorStore keeps ticking under pushed sub-screens, so a
+    // held movement button's repeat must be stopped here or it would keep
+    // firing Move*/Rotate* into a dialog/camp/cast screen (ROADMAP 4.5).
+    if (!mGuiManager.InMainView())
     {
-        mShowCompass = visible;
-        AddChildren();
+        StopMovementRepeat();
     }
+
+    // Rebuild children. With the compass-always behavior restored this no longer
+    // toggles the compass, but it's harmless and keeps MainView's child tree in
+    // sync on every push/pop (ROADMAP 4.5).
+    AddChildren();
 }
 
 bool MainView::OnMouseEvent(const MouseEvent& event)
 {
+    // Any mouse-button release ends a hold-to-repeat, regardless of where the
+    // cursor is (GLFW delivers the release even after a drag-off). Only one
+    // movement button can be held at a time, so this is unambiguous.
+    if (std::holds_alternative<LeftMouseRelease>(event))
+    {
+        StopMovementRepeat();
+    }
+
     if (mShowingBookmarkDialog)
     {
         if (std::holds_alternative<LeftMousePress>(event))
@@ -199,6 +221,40 @@ bool MainView::OnMouseEvent(const MouseEvent& event)
     }
 
     return handled;
+}
+
+void MainView::StartMovementRepeat(unsigned buttonIndex)
+{
+    StopMovementRepeat();
+
+    auto repeat = [this, buttonIndex]{
+        switch (buttonIndex)
+        {
+        case sForward:     mGuiManager.MoveForward();  break;
+        case sBackward:    mGuiManager.MoveBackward(); break;
+        case sRotateLeft:  mGuiManager.RotateLeft();   break;
+        case sRotateRight: mGuiManager.RotateRight();  break;
+        default: break;
+        }
+    };
+
+    auto animator = std::make_unique<TickAnimator>(
+        sMovementRepeatSeconds,
+        std::move(repeat));
+    // Keep a raw handle before handing ownership to the AnimatorStore so we can
+    // Stop() the repeat on release / sub-screen push. The store frees the
+    // animator once IsAlive() is false.
+    mMovementRepeatAnimator = animator.get();
+    mGuiManager.AddAnimator(std::move(animator));
+}
+
+void MainView::StopMovementRepeat()
+{
+    if (mMovementRepeatAnimator)
+    {
+        mMovementRepeatAnimator->Stop();
+        mMovementRepeatAnimator = nullptr;
+    }
 }
 
 void MainView::UpdatePartyMembers(const BAK::GameState& gameState)
@@ -285,12 +341,10 @@ void MainView::AddChildren()
         AddChildBack(&spell);
     }
 
-    // Compass is hidden whenever a sub-screen is pushed on top of MainView so it
-    // can't peek through dialogs that don't cover the compass box (ROADMAP 4.5).
-    if (mShowCompass)
-    {
-        AddChildBack(&mCompass);
-    }
+    // Compass always renders — original behavior preserved on Camp/Cast (the
+    // 4K ENCAMP.PNG override is transparent at the slot, so MainView's compass
+    // widget shows through sub-screen backgrounds). ROADMAP 4.5.
+    AddChildBack(&mCompass);
 
     for (auto& character : mCharacters)
         AddChildBack(&character);
