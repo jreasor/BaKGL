@@ -49,7 +49,9 @@ namespace
         "    \"MaxTextureDim\": 2048,\n"
         "    \"HeroTextures\": [\"A\", \"B\"],\n"
         "    // anisotropic filter level\n"
-        "    \"AnisotropicFilter\": 4.0\n"
+        "    \"AnisotropicFilter\": 4.0,\n"
+        "    // Task 4.4: ON = original art, OFF = 4K (bool)\n"
+        "    \"OriginalMode\": false\n"
         "  },\n"
         "  \"Logging\": {\n"
         "    \"LogLevel\": \"Debug\"\n"
@@ -106,6 +108,27 @@ TEST(ConfigSaveGraphicsValues, AnisotropicZeroWritesDecimal)
     g.mAnisotropicFilter = 0.0f;
     ASSERT_TRUE(Config::SaveGraphicsValues(cfg.mPath, g));
     EXPECT_NE(cfg.read().find("\"AnisotropicFilter\": 0.0"), std::string::npos);
+}
+
+// Task 4.4: the bool OriginalMode key persists via replaceBool (a sibling of
+// replaceValue -- the numeric regex won't match true/false literals). Mirrors
+// the numeric rewrite cases: only the matched bool literal changes; the key's
+// comment, the 3 owned numeric values, and the line count are all preserved.
+TEST(ConfigSaveGraphicsValues, RewritesOriginalModeBool)
+{
+    TempConfig cfg{kSample};
+    Config::Graphics g{};
+    g.mOriginalMode = true;
+    ASSERT_TRUE(Config::SaveGraphicsValues(cfg.mPath, g));
+
+    const auto out = cfg.read();
+    EXPECT_NE(out.find("\"OriginalMode\": true"), std::string::npos);
+    EXPECT_EQ(out.find("\"OriginalMode\": false"), std::string::npos);
+    // the bool key's comment + the (unchanged) numeric values survive untouched
+    EXPECT_NE(out.find("// Task 4.4: ON = original art, OFF = 4K (bool)"), std::string::npos);
+    EXPECT_NE(out.find("\"AnisotropicFilter\": 4.0"), std::string::npos);
+    // no lines added or removed -- only an in-line bool literal changed
+    EXPECT_EQ(countLines(out), countLines(kSample));
 }
 
 TEST(ConfigSaveGraphicsValues, ReturnsFalseOnMissingPath)

@@ -65,7 +65,7 @@ MainMenuScreen::MainMenuScreen(
         mLayout.GetWidgetLocation(sPreferences),
         mLayout.GetWidgetDimensions(sPreferences),
         mFont,
-        "#Preferences",
+        "#Settings",
         [this]{ ShowPreferences(); }
     },
     mContents{

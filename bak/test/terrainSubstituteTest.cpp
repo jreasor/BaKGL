@@ -6,6 +6,7 @@
 #include "bak/textureFactory.hpp"
 #include "com/path.hpp"
 #include "com/png.hpp"
+#include "graphics/graphicsConfig.hpp"
 #include "graphics/texture.hpp"
 
 #include <array>
@@ -57,10 +58,18 @@ struct TerrainSubstituteTest : public ::testing::Test
         std::filesystem::remove_all(mTmpDir);
         std::filesystem::create_directories(mTmpDir);
         Paths::Get().SetAssets4kDirectory(mTmpDir.string());
+        // Task 4.4: reset the process-wide GraphicsConfig OriginalMode flag.
+        // ctest runs each TEST_F as its own process (gtest_discover_tests), so this
+        // is redundant there -- but running the bakTest binary directly puts every
+        // case in one shared process, where OriginalModeSkipsSubstituteAndUses-
+        // Proprietary (which flips it true) would leak into the other substitution
+        // tests. Resetting here + in TearDown defends that single-process mode.
+        Graphics::GraphicsConfig::Get().SetOriginalMode(false);
     }
 
     void TearDown() override
     {
+        Graphics::GraphicsConfig::Get().SetOriginalMode(false);
         Paths::Get().SetAssets4kDirectory("");
         std::filesystem::remove_all(mTmpDir);
     }
@@ -146,5 +155,46 @@ TEST_F(TerrainSubstituteTest, FallsBackWhenNoSubstitutePng)
         EXPECT_EQ(t.GetHeight(), kBandOffsets[i]) << "strip " << i;
         EXPECT_EQ(t.GetTargetWidth(), 320u) << "strip " << i;
         EXPECT_EQ(t.GetTargetHeight(), kBandOffsets[i]) << "strip " << i;
+    }
+}
+
+// Task 4.4: OriginalMode=true gates FindSubstitute -- even though a 4K ZxxL.PNG
+// is present on disk, the gate returns nullopt and the proprietary SCX slice path
+// runs instead. Proves the gate is active at runtime: strips come out at the
+// original BAK dims (320 x band offset) and, because the dummy palette is
+// all-black, the texels are RGB 0 -- NOT the substitute's solid {1,2,3}/255.
+// (SlicesEightStripsFromWholeImagePng above covers the off-path with the flag
+// false; this test covers the on-path.)
+TEST_F(TerrainSubstituteTest, OriginalModeSkipsSubstituteAndUsesProprietary)
+{
+    const auto png = MakeSolidImage(320, 200, PNGColor{1, 2, 3, 255});
+    WritePNG((mTmpDir / "Z04L.PNG").string().c_str(), png);
+
+    Graphics::GraphicsConfig::Get().SetOriginalMode(true);
+
+    auto store = Graphics::TextureStore{};
+    auto terrain = BAK::Image{320, 200, 0, false};
+    auto pal = MakeDummyPalette();
+
+    BAK::TextureFactory::AddTerrainToTextureStore(store, terrain, pal, "Z04L.SCX");
+
+    ASSERT_EQ(store.size(), 8u);
+    for (unsigned i = 0; i < 8; ++i)
+    {
+        const auto& t = store.GetTexture(i);
+        // proprietary dims (320 x original band offset), not the substitute's
+        EXPECT_EQ(t.GetWidth(), 320u) << "strip " << i;
+        EXPECT_EQ(t.GetHeight(), kBandOffsets[i]) << "strip " << i;
+        EXPECT_EQ(t.GetTargetWidth(), 320u) << "strip " << i;
+        EXPECT_EQ(t.GetTargetHeight(), kBandOffsets[i]) << "strip " << i;
+
+        // dummy palette is all-black, so proprietary texels are black -- NOT the
+        // substitute's {1,2,3}/255, proving the gate skipped the 4K PNG.
+        const auto& texels = t.GetTexture();
+        ASSERT_EQ(texels.size(), static_cast<std::size_t>(320) * kBandOffsets[i]);
+        const auto& p0 = texels.front();
+        EXPECT_NEAR(p0.r, 0.f, 1e-5f) << "strip " << i;
+        EXPECT_NEAR(p0.g, 0.f, 1e-5f) << "strip " << i;
+        EXPECT_NEAR(p0.b, 0.f, 1e-5f) << "strip " << i;
     }
 }
