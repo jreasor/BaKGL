@@ -30,6 +30,16 @@ public:
     unsigned GetMaxTextures() const;
     void SetMaxTextures(unsigned max);
 
+    // Task 3.3-C: opt-in RGBA8 (GL_UNSIGNED_BYTE) staging for glTexSubImage3D.
+    // Default false = legacy GL_FLOAT staging (driver converts floats to RGBA8
+    // during upload). The RGBA8 path builds the bytes on the CPU
+    // (BuildRgba8Staging); in the unoptimized Debug build its per-channel
+    // scalar quantize is ~2.5x slower than the driver's conversion on the fill
+    // (the dominant zone-hitch cost), so it is gated off until a vectorized
+    // build or Task 3.3-D's async PBO path makes it worthwhile.
+    bool GetRGBA8Upload() const;
+    void SetRGBA8Upload(bool enabled);
+
     // Task 3.2 — hero fullscreen backgrounds: base names (no extension) that bypass
     // the MaxTextureDim cap and get a dedicated one-layer sheet at the substitute's
     // full uncapped resolution. Consulted by the SCX substitute path so the bypass
@@ -42,6 +52,7 @@ private:
 
     unsigned mMaxTextureDim;
     unsigned mMaxTextures;
+    bool mRGBA8Upload;
     std::unordered_set<std::string> mHeroTextures;
 };
 

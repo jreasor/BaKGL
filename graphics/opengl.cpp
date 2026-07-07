@@ -1,6 +1,7 @@
 #include "graphics/opengl.hpp"
 
 #include "graphics/texture.hpp"
+#include "graphics/textureUpload.hpp"
 #include "graphics/vramTracker.hpp"
 #include "graphics/graphicsConfig.hpp"
 
@@ -354,34 +355,75 @@ void TextureBuffer::LoadTexturesGL(
     auto fillTime = Clock::duration{0};
     auto uploadTime = Clock::duration{0};
 
+    const bool rgba8 = GraphicsConfig::Get().GetRGBA8Upload();
     unsigned index = 0;
     for (const auto& tex : textures)
     {
-        std::vector<glm::vec4> paddedTex(
-            maxDim * maxDim,
-            glm::vec4{0});
-
-        // Chuck the image in the padded sized texture
-        // GetPixel() will wrap and fill the texture
+        if (rgba8)
         {
-            const auto t0 = Clock::now();
-            for (unsigned x = 0; x < maxDim; x++)
-                for (unsigned y = 0; y < maxDim; y++)
-                    paddedTex[x + y * maxDim] = tex.GetPixel(x, y);
-            fillTime += Clock::now() - t0;
+            // Task 3.3-C (opt-in): RGBA8 staging. BuildRgba8Staging tiles the
+            // texture into a maxDim*maxDim RGBA8 buffer (4 B/px) via GetPixel's
+            // modulo wrap; QuantizeChannel applies the GL spec float->RGBA8
+            // conversion, so the uploaded bytes match the GL_FLOAT path
+            // exactly (unit-tested). 4x smaller staging buffer + bus, no
+            // driver float conversion. Default OFF: in the Debug build the
+            // per-channel scalar quantize is ~2.5x slower than the driver's
+            // optimized conversion on the fill (the dominant zone-hitch
+            // cost), so this path regresses the hitch until a vectorized build
+            // or Task 3.3-D's async PBO path hides the fill off the render
+            // thread.
+            std::vector<std::uint8_t> staging;
+            {
+                const auto t0 = Clock::now();
+                staging = BuildRgba8Staging(tex, maxDim);
+                fillTime += Clock::now() - t0;
+            }
+
+            {
+                const auto t0 = Clock::now();
+                glTexSubImage3D(
+                    mTextureType,
+                    0,                 // Mipmap number
+                    0, 0, index,       // xoffset, yoffset, zoffset
+                    maxDim, maxDim, 1, // width, height, depth
+                    GL_RGBA,           // format
+                    GL_UNSIGNED_BYTE,  // type — RGBA8 bytes, no driver float conversion
+                    staging.data());   // pointer to data
+                uploadTime += Clock::now() - t0;
+            }
         }
-
+        else
         {
-            const auto t0 = Clock::now();
-            glTexSubImage3D(
-                mTextureType,
-                0,                 // Mipmap number
-                0, 0, index,       // xoffset, yoffset, zoffset
-                maxDim, maxDim, 1, // width, height, depth
-                GL_RGBA,           // format
-                GL_FLOAT,          // type
-                paddedTex.data()); // pointer to data
-            uploadTime += Clock::now() - t0;
+            // Legacy GL_FLOAT staging (default). Build a vector<glm::vec4>
+            // (16 B/px) tiled via GetPixel and let the driver convert floats to
+            // RGBA8 during upload. Faster fill than the opt-in RGBA8 path in
+            // the unoptimized Debug build (no per-channel scalar quantize);
+            // the driver's conversion is optimized/streaming, so this stays
+            // the default until 3.3-D's async PBO path moves the RGBA8 fill
+            // off the render thread.
+            std::vector<glm::vec4> paddedTex(
+                maxDim * maxDim,
+                glm::vec4{0});
+            {
+                const auto t0 = Clock::now();
+                for (unsigned x = 0; x < maxDim; x++)
+                    for (unsigned y = 0; y < maxDim; y++)
+                        paddedTex[x + y * maxDim] = tex.GetPixel(x, y);
+                fillTime += Clock::now() - t0;
+            }
+
+            {
+                const auto t0 = Clock::now();
+                glTexSubImage3D(
+                    mTextureType,
+                    0,                 // Mipmap number
+                    0, 0, index,       // xoffset, yoffset, zoffset
+                    maxDim, maxDim, 1, // width, height, depth
+                    GL_RGBA,           // format
+                    GL_FLOAT,          // type
+                    paddedTex.data()); // pointer to data
+                uploadTime += Clock::now() - t0;
+            }
         }
 
         index++;

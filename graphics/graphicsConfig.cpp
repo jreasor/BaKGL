@@ -51,6 +51,18 @@ void GraphicsConfig::SetMaxTextures(unsigned max)
     mMaxTextures = effective;
 }
 
+bool GraphicsConfig::GetRGBA8Upload() const
+{
+    return mRGBA8Upload;
+}
+
+void GraphicsConfig::SetRGBA8Upload(bool enabled)
+{
+    Logging::LogInfo(__FUNCTION__) << "RGBA8Upload = "
+        << (enabled ? "true" : "false") << "\n";
+    mRGBA8Upload = enabled;
+}
+
 bool GraphicsConfig::IsHero(const std::string& baseName) const
 {
     return mHeroTextures.contains(baseName);
@@ -66,7 +78,8 @@ void GraphicsConfig::SetHeroTextures(const std::vector<std::string>& heroes)
 
 GraphicsConfig::GraphicsConfig()
 :   mMaxTextureDim{2048},
-    mMaxTextures{256}
+    mMaxTextures{256},
+    mRGBA8Upload{false}
 {}
 
 }

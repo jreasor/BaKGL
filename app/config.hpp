@@ -32,6 +32,14 @@ struct Graphics
     // exact-per-store); raise only if a logical sheet legitimately needs >256
     // frames.
     unsigned mMaxTextures{256};
+    // Task 3.3-C: opt-in RGBA8 (GL_UNSIGNED_BYTE) staging for glTexSubImage3D.
+    // Default false = legacy GL_FLOAT staging (the driver converts floats to
+    // RGBA8 during upload). The RGBA8 path builds the bytes on the CPU
+    // (BuildRgba8Staging); in the unoptimized Debug build its per-channel
+    // scalar quantize is ~2.5x slower than the driver's conversion on the fill
+    // (the dominant zone-hitch cost), so it is gated off until a vectorized
+    // build or Task 3.3-D's async PBO path makes it worthwhile.
+    bool mRGBA8Upload{false};
     // Task 3.2: base names (no extension) of fullscreen SCX backgrounds that bypass
     // the MaxTextureDim cap and get a dedicated one-layer sheet at the substitute's
     // full uncapped resolution. Empty = today's behavior (all substitutes capped).

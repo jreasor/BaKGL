@@ -19,6 +19,16 @@
         // exact-per-store); raise only if a logical sheet legitimately needs >256
         // frames.
         "MaxTextures": 256,
+        // Task 3.3-C: opt-in RGBA8 (GL_UNSIGNED_BYTE) texture staging. Default
+        // false = legacy GL_FLOAT staging (driver converts floats to RGBA8
+        // during upload). The RGBA8 path builds the bytes on the CPU
+        // (BuildRgba8Staging) -- 4x smaller staging buffer + bus, no driver
+        // float conversion, identical pixels -- but in the Debug build its
+        // per-channel scalar quantize regresses the fill ~2.5x (the dominant
+        // zone-hitch cost), so it is gated off until a vectorized build or
+        // Task 3.3-D's async PBO path makes it a net win. Unit-tested
+        // (textureUploadTest); exercised by booting with this set to true.
+        "RGBA8Upload": false,
         // Task 3.2: hero fullscreen backgrounds (BASE names, no extension) get a
         // dedicated one-layer sheet at the substitute's full uncapped resolution.
         // Empty list = today's behavior (all substitutes capped to MaxTextureDim).

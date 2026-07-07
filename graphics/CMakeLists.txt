@@ -19,6 +19,7 @@ add_library(graphics
     sphere.hpp sphere.cpp
     sprites.hpp sprites.cpp
     texture.hpp texture.cpp
+    textureUpload.hpp textureUpload.cpp
     types.hpp
     vramTracker.hpp vramTracker.cpp
 )

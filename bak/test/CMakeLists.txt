@@ -15,6 +15,7 @@ add_executable(bakTest
     combatSubstituteTest.cpp
     mainViewCutoutTest.cpp
     vramBudgetTest.cpp
+    textureUploadTest.cpp
     )
 
 target_link_libraries(bakTest
