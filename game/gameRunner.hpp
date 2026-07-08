@@ -31,6 +31,7 @@ class Camera;
 namespace BAK {
 class CombatWorldLocation;
 class GameState;
+class WorldTileStore;
 class Zone;
 namespace Encounter {
 class Encounter;
@@ -74,6 +75,7 @@ public:
     
     void DoTeleport(BAK::Encounter::Teleport teleport) override;
     void LoadGame(std::string savePath, std::optional<BAK::Chapter> chapter) override;
+    const BAK::WorldTileStore& GetWorldTileStore() const override;
 
     void LoadZoneData(BAK::ZoneNumber zone);
     void DoTransition(

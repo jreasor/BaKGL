@@ -140,6 +140,7 @@ public:
     void ShowFullMap() override;
     void ShowOverheadMap() override;
     void ShowGameStartMap() override;
+    const BAK::WorldTileStore& GetWorldTileStore() const override;
     void ShowCureScreen(
         unsigned templeNumber,
         unsigned cureFactor,

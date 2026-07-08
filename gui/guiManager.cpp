@@ -120,7 +120,8 @@ GuiManager::GuiManager(
     },
     mOverheadMap{
         *this,
-        mFontManager.GetGameFont()
+        mFontManager.GetGameFont(),
+        mGameState
     },
     mMoredhelScreen{
         *this,
@@ -656,6 +657,12 @@ void GuiManager::ShowOverheadMap()
     DoFade(1.0, [this]{
         PushScreen(&mOverheadMap);
     });
+}
+
+const BAK::WorldTileStore& GuiManager::GetWorldTileStore() const
+{
+    ASSERT(mZoneLoader);
+    return mZoneLoader->GetWorldTileStore();
 }
 
 void GuiManager::ShowGameStartMap()

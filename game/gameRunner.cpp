@@ -128,6 +128,12 @@ void GameRunner::LoadGame(std::string savePath, std::optional<BAK::Chapter> chap
     LoadZoneData(mGameState.GetZone());
 }
 
+const BAK::WorldTileStore& GameRunner::GetWorldTileStore() const
+{
+    ASSERT(mZoneData);
+    return mZoneData->mWorldTiles;
+}
+
 void GameRunner::LoadZoneData(BAK::ZoneNumber zone)
 {
     mZoneData = std::make_unique<BAK::Zone>(zone.mValue);

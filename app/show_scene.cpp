@@ -1,5 +1,6 @@
 #include "bak/encounter/teleport.hpp"
 #include "bak/gameState.hpp"
+#include "bak/worldFactory.hpp"
 
 #include "com/algorithm.hpp"
 #include "com/logger.hpp"
@@ -37,6 +38,11 @@ public:
 
     void LoadGame(std::string, std::optional<BAK::Chapter>) override
     {
+    }
+
+    const BAK::WorldTileStore& GetWorldTileStore() const override
+    {
+        throw std::runtime_error{"DummyZoneLoader has no zone tiles"};
     }
 
 };

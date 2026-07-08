@@ -17,6 +17,7 @@ add_executable(bakTest
     vramBudgetTest.cpp
     textureUploadTest.cpp
     zoneDefInfoTest.cpp
+    overheadMapClassifierTest.cpp
     )
 
 target_link_libraries(bakTest

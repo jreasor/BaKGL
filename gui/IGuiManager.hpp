@@ -14,11 +14,14 @@
 #include "bak/saveManager.hpp"
 #include "bak/types.hpp"
 
+namespace BAK { class WorldTileStore; }
+
 namespace Gui {
 
 class IGuiManager
 {
 public:
+    virtual ~IGuiManager() = default;
     virtual void DoFade(double duration, std::function<void()>&&) = 0;
     virtual bool InMainView() const = 0;
     virtual bool InCombatView() const = 0;
@@ -59,6 +62,10 @@ public:
     virtual void ShowFullMap() = 0;
     virtual void ShowOverheadMap() = 0;
     virtual void ShowGameStartMap() = 0;
+
+    // The currently-loaded zone's world tiles (ROADMAP 4.7 Overhead Map).
+    // Valid only in-game; implementations assert a zone is loaded.
+    virtual const BAK::WorldTileStore& GetWorldTileStore() const = 0;
     virtual void ShowTeleport(unsigned sourceTemple, BAK::ShopStats* temple) = 0;
     virtual void ShowCureScreen(
         unsigned templeNumber,
