@@ -22,6 +22,7 @@
 #include "gui/fadeScreen.hpp"
 #include "gui/fontManager.hpp"
 #include "gui/fullMap.hpp"
+#include "gui/overheadMap.hpp"
 #include "gui/gdsScene.hpp"
 #include "gui/icons.hpp"
 #include "gui/info/infoScreen.hpp"
@@ -137,6 +138,7 @@ public:
     void ShowCamp(bool isInn, BAK::ShopStats* inn) override;
     void ShowCast(bool inCombat) override;
     void ShowFullMap() override;
+    void ShowOverheadMap() override;
     void ShowGameStartMap() override;
     void ShowCureScreen(
         unsigned templeNumber,
@@ -192,6 +194,7 @@ private:
     LockScreen mLockScreen;
 public:
     FullMap mFullMap;
+    OverheadMap mOverheadMap;
 private:
     MoredhelScreen mMoredhelScreen;
     TeleportScreen mTeleportScreen;

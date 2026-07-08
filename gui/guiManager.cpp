@@ -118,6 +118,10 @@ GuiManager::GuiManager(
         mFontManager.GetGameFont(),
         mGameState
     },
+    mOverheadMap{
+        *this,
+        mFontManager.GetGameFont()
+    },
     mMoredhelScreen{
         *this,
         mBackgrounds,
@@ -643,6 +647,14 @@ void GuiManager::ShowFullMap()
     mFullMap.DisplayMapMode();
     DoFade(1.0, [this]{
         PushScreen(&mFullMap);
+    });
+}
+
+void GuiManager::ShowOverheadMap()
+{
+    mOverheadMap.Enter();
+    DoFade(1.0, [this]{
+        PushScreen(&mOverheadMap);
     });
 }
 

@@ -123,7 +123,7 @@ void MainView::HandleButton(unsigned buttonIndex)
         mGuiManager.ShowCamp(false, nullptr);
         break;
     case sFullMap:
-        mGuiManager.ShowFullMap();
+        mGuiManager.ShowOverheadMap();
         break;
     case sBookmark:
         mShowingBookmarkDialog = true;

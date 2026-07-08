@@ -57,6 +57,7 @@ public:
     virtual void ShowCamp(bool isInn, BAK::ShopStats* inn) = 0;
     virtual void ShowCast(bool inCombat) = 0;
     virtual void ShowFullMap() = 0;
+    virtual void ShowOverheadMap() = 0;
     virtual void ShowGameStartMap() = 0;
     virtual void ShowTeleport(unsigned sourceTemple, BAK::ShopStats* temple) = 0;
     virtual void ShowCureScreen(

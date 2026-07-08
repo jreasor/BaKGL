@@ -28,6 +28,7 @@ add_library(gui
     list.hpp
     mainView.hpp mainView.cpp
     mainMenuScreen.hpp mainMenuScreen.cpp
+    overheadMap.hpp overheadMap.cpp
     preferencesScreen.hpp preferencesScreen.cpp
     saveScreen.hpp saveScreen.cpp
     tickAnimator.hpp tickAnimator.cpp
