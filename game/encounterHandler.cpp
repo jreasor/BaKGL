@@ -53,42 +53,42 @@ bool EncounterHandler::DoEncounter(const BAK::Encounter::Encounter& encounter)
     return std::visit(
         overloaded{
         [&](const BAK::Encounter::GDSEntry& gds){
-            if (mGuiManager.InMainView())
+            if (mGuiManager.InMainView() || mGuiManager.InOverheadMap())
             {
                 return DoGDSEncounter(encounter, gds);
             }
             return false;
         },
         [&](const BAK::Encounter::Block& block){
-            if (mGuiManager.InMainView())
+            if (mGuiManager.InMainView() || mGuiManager.InOverheadMap())
             {
                 return DoBlockEncounter(encounter, block);
             }
             return false;
         },
         [&](const BAK::Encounter::Combat& combat){
-            if (mGuiManager.InMainView())
+            if (mGuiManager.InMainView() || mGuiManager.InOverheadMap())
             {
                 return mCombatHandler.CheckAndDoCombatEncounter(encounter, combat);
             }
             return false;
         },
         [&](const BAK::Encounter::Dialog& dialog){
-            if (mGuiManager.InMainView())
+            if (mGuiManager.InMainView() || mGuiManager.InOverheadMap())
             {
                 return DoDialogEncounter(encounter, dialog);
             }
             return false;
         },
         [&](const BAK::Encounter::EventFlag& flag){
-            if (mGuiManager.InMainView())
+            if (mGuiManager.InMainView() || mGuiManager.InOverheadMap())
             {
                 return DoEventFlagEncounter(encounter, flag);
             }
             return false;
         },
         [&](const BAK::Encounter::Zone& zone){
-            if (mGuiManager.InMainView())
+            if (mGuiManager.InMainView() || mGuiManager.InOverheadMap())
             {
                 return DoZoneEncounter(encounter, zone);
             }

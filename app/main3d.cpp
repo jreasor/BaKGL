@@ -443,15 +443,79 @@ int main(int argc, char** argv)
         if (guiManager.InMainView())
             UpdateLightCamera();
     });
-    inputHandler.Bind(GLFW_KEY_UP,   [&]{ if (InputAllowed()){cameraPtr->StrafeForward(); UpdateGameTile();}});
-    inputHandler.Bind(GLFW_KEY_DOWN, [&]{ if (InputAllowed()){cameraPtr->StrafeBackward(); UpdateGameTile();}});
-    inputHandler.Bind(GLFW_KEY_LEFT, [&]{ if (InputAllowed()){cameraPtr->StrafeLeft(); UpdateGameTile();}});
-    inputHandler.Bind(GLFW_KEY_RIGHT,[&]{ if (InputAllowed()){cameraPtr->StrafeRight(); UpdateGameTile();}});
+    inputHandler.Bind(GLFW_KEY_UP,   [&]{
+        if (guiManager.InOverheadMap())
+        {
+            cameraPtr->MoveForward();
+            UpdateGameTile();
+        }
+        else if (InputAllowed())
+        {
+            cameraPtr->StrafeForward();
+            UpdateGameTile();
+        }});
+    inputHandler.Bind(GLFW_KEY_DOWN, [&]{
+        if (guiManager.InOverheadMap())
+        {
+            cameraPtr->MoveBackward();
+            UpdateGameTile();
+        }
+        else if (InputAllowed())
+        {
+            cameraPtr->StrafeBackward();
+            UpdateGameTile();
+        }});
+    inputHandler.Bind(GLFW_KEY_LEFT, [&]{
+        if (guiManager.InOverheadMap())
+        {
+            cameraPtr->RotateLeft();
+            guiManager.mMainView.SetHeading(cameraPtr->GetHeading());
+            UpdateGameTile();
+        }
+        else if (InputAllowed())
+        {
+            cameraPtr->StrafeLeft();
+            UpdateGameTile();
+        }});
+    inputHandler.Bind(GLFW_KEY_RIGHT,[&]{
+        if (guiManager.InOverheadMap())
+        {
+            cameraPtr->RotateRight();
+            guiManager.mMainView.SetHeading(cameraPtr->GetHeading());
+            UpdateGameTile();
+        }
+        else if (InputAllowed())
+        {
+            cameraPtr->StrafeRight();
+            UpdateGameTile();
+        }});
 
-    inputHandler.Bind(GLFW_KEY_W, [&]{ if (InputAllowed()){cameraPtr->MoveForward(); UpdateGameTile();}});
-    inputHandler.Bind(GLFW_KEY_A, [&]{ if (InputAllowed()){cameraPtr->StrafeLeft(); UpdateGameTile();}});
-    inputHandler.Bind(GLFW_KEY_D, [&]{ if (InputAllowed()){cameraPtr->StrafeRight(); UpdateGameTile();}});
-    inputHandler.Bind(GLFW_KEY_S, [&]{ if (InputAllowed()){cameraPtr->MoveBackward(); UpdateGameTile();}});
+    inputHandler.Bind(GLFW_KEY_W, [&]{ if (InputAllowed() || guiManager.InOverheadMap()){cameraPtr->MoveForward(); UpdateGameTile();}});
+    inputHandler.Bind(GLFW_KEY_A, [&]{
+        if (guiManager.InOverheadMap())
+        {
+            cameraPtr->RotateLeft();
+            guiManager.mMainView.SetHeading(cameraPtr->GetHeading());
+            UpdateGameTile();
+        }
+        else if (InputAllowed())
+        {
+            cameraPtr->StrafeLeft();
+            UpdateGameTile();
+        }});
+    inputHandler.Bind(GLFW_KEY_D, [&]{
+        if (guiManager.InOverheadMap())
+        {
+            cameraPtr->RotateRight();
+            guiManager.mMainView.SetHeading(cameraPtr->GetHeading());
+            UpdateGameTile();
+        }
+        else if (InputAllowed())
+        {
+            cameraPtr->StrafeRight();
+            UpdateGameTile();
+        }});
+    inputHandler.Bind(GLFW_KEY_S, [&]{ if (InputAllowed() || guiManager.InOverheadMap()){cameraPtr->MoveBackward(); UpdateGameTile();}});
     inputHandler.Bind(GLFW_KEY_Q, [&]{
         if (InputAllowed())
         {
@@ -652,7 +716,7 @@ int main(int argc, char** argv)
                 [](auto v){ return BAK::EntityIndex{v}; }));
 
         cameraPtr->SetDeltaTime(deltaTime);
-        if (guiManager.InMainView())
+        if (guiManager.InMainView() || guiManager.InOverheadMap())
         {
             gameState.SetLocation(cameraPtr->GetGameLocation());
         }
@@ -954,7 +1018,7 @@ int main(int argc, char** argv)
             console.Draw("Console", &consoleOpen);
         }
 
-        if (guiManager.InMainView() && !guiManager.GetCombatSequenceActive())
+        if ((guiManager.InMainView() || guiManager.InOverheadMap()) && !guiManager.GetCombatSequenceActive())
         {
             gameRunner.RunGameUpdate(config.mGame.mAdvanceTime);
             if (config.mAudio.mEnableBackgroundSounds)

@@ -391,7 +391,7 @@ void GuiManager::StartDialog(
         throw std::runtime_error("failure");
     }
     mCursor.PushCursor(0);
-    mDialogRunner.SetInWorldView(InMainView() || drawWorldFrame);
+    mDialogRunner.SetInWorldView(InMainView() || InOverheadMap() || drawWorldFrame);
     mOnExitCallbacks.push(nullptr);
 
     PushScreen(&mDialogRunner);
