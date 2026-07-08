@@ -82,7 +82,7 @@ private:
 
     static constexpr float kZoomDefault = 6.0f;    // tiles visible (vertical)
     static constexpr float kZoomMinTiles = 0.05f;  // closest zoom-in (1/20 tile)
-    static constexpr float kZoomMaxTiles = 50.0f;  // farthest zoom out
+    static constexpr float kZoomMaxTiles = 16.0f;  // farthest zoom out (~40 clicks from default)
     static constexpr float kZoomStep    = 0.25f;   // fine sub-tile steps
 
     // REQ_MAIN.DAT button-bar geometry (320×200, y-down): 6 slots, 34×29 each,
@@ -99,7 +99,7 @@ private:
     static constexpr unsigned kIconZoomOut = 10;
     static constexpr unsigned kIconZoomIn  = 11;
     static constexpr unsigned kIconCamp    = 7;
-    static constexpr unsigned kIconMain    = 9;
+    static constexpr unsigned kIconMain    = 61;
 
     // Portrait slots (320×200, y-down): h=44, y=141; indexed by ActiveCharIndex.
     static constexpr std::array<glm::vec2, 3> sPortraitPos{{
