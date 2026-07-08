@@ -18,6 +18,7 @@
 
 #include <GLFW/glfw3.h>
 
+#include <array>
 #include <cmath>
 #include <cstddef>
 #include <memory>
@@ -101,12 +102,13 @@ OverheadMap::OverheadMap(
 void OverheadMap::Enter()
 {
     mLogger.Info() << "OverheadMap::Enter\n";
+    mZoneMap = BAK::LoadZoneMap(mGameState.GetZone());
+    // Loaded for reference/future fidelity only — the view span uses mZoom.
     const auto def = BAK::LoadZoneDefDatInfo(mGameState.GetZone());
     mZoomMin  = def.mMinMapZoom;
     mZoomMax  = def.mMaxMapZoom;
     mZoomRate = def.mMapZoomRate;
-    // Start at the most local (closest) view the zone defines.
-    mZoom     = mZoomMax;
+    mZoom     = kZoomDefault;
     RebuildMap();
 }
 
@@ -117,12 +119,12 @@ bool OverheadMap::OnKeyEvent(const KeyEvent& event)
     const auto key = std::get<KeyPress>(event).mValue;
     if (key == GLFW_KEY_EQUAL)
     {
-        StepZoom(-1); // zoom in: smaller view span
+        StepZoom(-1); // zoom in: fewer tiles visible
         return true;
     }
     if (key == GLFW_KEY_MINUS)
     {
-        StepZoom(+1); // zoom out: larger view span
+        StepZoom(+1); // zoom out: more tiles visible
         return true;
     }
     return false;
@@ -139,22 +141,20 @@ void OverheadMap::AddChildren()
 void OverheadMap::StepZoom(int direction)
 {
     if (direction < 0)
-        mZoom = (mZoom > mZoomMin + mZoomRate) ? mZoom - mZoomRate : mZoomMin;
+        mZoom = (mZoom > kZoomMinTiles + kZoomStep) ? mZoom - kZoomStep : kZoomMinTiles;
     else
-        mZoom = (mZoom + mZoomRate < mZoomMax) ? mZoom + mZoomRate : mZoomMax;
+        mZoom = (mZoom + kZoomStep < kZoomMaxTiles) ? mZoom + kZoomStep : kZoomMaxTiles;
     RebuildMap();
 }
 
-glm::vec2 OverheadMap::Project(glm::uvec2 bakPos) const
+glm::vec2 OverheadMap::ProjectTile(unsigned tx, unsigned ty) const
 {
-    const auto player = mGameState.GetLocation().mPosition; // glm::uvec2
-    const float pxPerBAK = (static_cast<float>(kMapH) / static_cast<float>(mZoom)) * kZoomScale;
-    const long dx = static_cast<long>(bakPos.x) - static_cast<long>(player.x);
-    const long dy = static_cast<long>(bakPos.y) - static_cast<long>(player.y);
-    // BAK y is up; screen y is down → negate Y. Player is centered on the map.
+    const auto player = BAK::GetTile(mGameState.GetLocation().mPosition);
+    const float cellPx = kMapH / static_cast<float>(mZoom);
+    // Returns the cell CENTER. Player's tile is centered on the map; north up.
     return glm::vec2{
-        sMapCenter.x + static_cast<float>(dx) * pxPerBAK,
-        sMapCenter.y - static_cast<float>(dy) * pxPerBAK};
+        sMapCenter.x + (static_cast<float>(tx) - static_cast<float>(player.x)) * cellPx,
+        sMapCenter.y - (static_cast<float>(ty) - static_cast<float>(player.y)) * cellPx};
 }
 
 void OverheadMap::RebuildMap()
@@ -166,50 +166,75 @@ void OverheadMap::RebuildMap()
     mPlayerBody.reset();
     mPlayerNose.reset();
 
+    // Per-cell terrain from the sparse live tiles; on-map cells with no 3D
+    // tile default to Ground. (≤255 tiles, so this is cheap.)
+    std::array<BAK::Terrain, kZoneDim * kZoneDim> terrainGrid{};
+    terrainGrid.fill(BAK::Terrain::Ground);
+
     const auto& tiles = mGuiManager.GetWorldTileStore().GetTiles();
-    const auto player = mGameState.GetLocation().mPosition;
-    const float pxPerBAK = (static_cast<float>(kMapH) / static_cast<float>(mZoom)) * kZoomScale;
-
-    // Cull tiles whose center is outside the visible BAK extent plus one
-    // tile of margin (so edge tiles still fill the frame).
-    const float halfW = (kMapW * 0.5f) / pxPerBAK + BAK::gTileSize;
-    const float halfH = (kMapH * 0.5f) / pxPerBAK + BAK::gTileSize;
-    const float tilePx = BAK::gTileSize * pxPerBAK;
-
     for (const auto& world : tiles)
     {
-        const auto tile = world.GetTile(); // tile coords (glm::uvec2)
-        const glm::uvec2 centerBAK{
-            static_cast<unsigned>(tile.x * BAK::gTileSize + BAK::gTileSize * 0.5f),
-            static_cast<unsigned>(tile.y * BAK::gTileSize + BAK::gTileSize * 0.5f)};
-
-        const float dx = static_cast<float>(static_cast<long>(centerBAK.x) - static_cast<long>(player.x));
-        const float dy = static_cast<float>(static_cast<long>(centerBAK.y) - static_cast<long>(player.y));
-        if (std::fabs(dx) > halfW || std::fabs(dy) > halfH)
+        const auto tile = world.GetTile(); // glm::uvec2, 0..49
+        if (tile.x >= kZoneDim || tile.y >= kZoneDim)
             continue;
+        terrainGrid[tile.y * kZoneDim + tile.x] = BAK::ClassifyTileTerrain(world.GetItems());
+    }
 
-        const auto screen = Project(centerBAK);
-        const auto terrain = BAK::ClassifyTileTerrain(world.GetItems());
+    const auto player = BAK::GetTile(mGameState.GetLocation().mPosition);
+    const float cellPx = kMapH / static_cast<float>(mZoom);
+    const int halfX = static_cast<int>(kMapW / cellPx * 0.5f) + 1;
+    const int halfY = static_cast<int>(kMapH / cellPx * 0.5f) + 1;
 
-        auto quad = std::make_unique<Widget>(
-            RectTag{},
-            glm::vec2{screen.x - tilePx * 0.5f, screen.y - tilePx * 0.5f},
-            glm::vec2{tilePx, tilePx},
-            TerrainColor(terrain),
-            false);
-        mClipRegion.AddChildBack(quad.get());
-        mTerrainQuads.push_back(std::move(quad));
+    // Coverage base: draw every on-map cell in the visible window. Off-map
+    // cells (GetMapDatTileValue == 0) are left as background → the map reads
+    // as a continuous silhouette of the zone's walkable area, not gaps.
+    for (int dy = -halfY; dy <= halfY; ++dy)
+    {
+        const int ty = static_cast<int>(player.y) + dy;
+        if (ty < 0 || ty >= static_cast<int>(kZoneDim)) continue;
+        for (int dx = -halfX; dx <= halfX; ++dx)
+        {
+            const int tx = static_cast<int>(player.x) + dx;
+            if (tx < 0 || tx >= static_cast<int>(kZoneDim)) continue;
+            if (BAK::GetMapDatTileValue(tx, ty, mZoneMap) == 0)
+                continue;
 
-        // Structure markers (buildings / bridges / entrances / ...) for this tile.
+            const auto center = ProjectTile(tx, ty);
+            auto quad = std::make_unique<Widget>(
+                RectTag{},
+                glm::vec2{center.x - cellPx * 0.5f, center.y - cellPx * 0.5f},
+                glm::vec2{cellPx, cellPx},
+                TerrainColor(terrainGrid[ty * kZoneDim + tx]),
+                false);
+            mClipRegion.AddChildBack(quad.get());
+            mTerrainQuads.push_back(std::move(quad));
+        }
+    }
+
+    // Structure markers (buildings / bridges / entrances / ...). Placed at
+    // their sub-tile BAK location within the tile cell.
+    for (const auto& world : tiles)
+    {
+        const auto tile = world.GetTile();
+        if (tile.x >= kZoneDim || tile.y >= kZoneDim) continue;
         for (const auto& item : world.GetItems())
         {
             if (!BAK::IsOverheadMapStructure(item.GetZoneItem().GetEntityType()))
                 continue;
-            const auto sLoc = Project(item.GetBakLocation());
+            const auto center = ProjectTile(tile.x, tile.y);
+            const auto bakLoc = item.GetBakLocation();
+            const glm::uvec2 tileOrigin{
+                tile.x * static_cast<unsigned>(BAK::gTileSize),
+                tile.y * static_cast<unsigned>(BAK::gTileSize)};
+            const float subX = static_cast<float>(static_cast<long>(bakLoc.x) - static_cast<long>(tileOrigin.x)) / static_cast<float>(BAK::gTileSize);
+            const float subY = static_cast<float>(static_cast<long>(bakLoc.y) - static_cast<long>(tileOrigin.y)) / static_cast<float>(BAK::gTileSize);
+            const glm::vec2 loc{
+                center.x + (subX - 0.5f) * cellPx,
+                center.y - (subY - 0.5f) * cellPx};
             constexpr float ss = 4.0f;
             auto sq = std::make_unique<Widget>(
                 RectTag{},
-                glm::vec2{sLoc.x - ss * 0.5f, sLoc.y - ss * 0.5f},
+                glm::vec2{loc.x - ss * 0.5f, loc.y - ss * 0.5f},
                 glm::vec2{ss, ss},
                 sStructureColor,
                 false);
@@ -220,7 +245,7 @@ void OverheadMap::RebuildMap()
 
     // Party marker: red square on the player tile + a cream "nose" offset in
     // the facing direction (heading 0 = north = screen-up).
-    const auto screen = Project(player);
+    const auto screen = ProjectTile(player.x, player.y);
     constexpr float body = 6.0f;
     mPlayerBody = std::make_unique<Widget>(
         RectTag{},
