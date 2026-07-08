@@ -804,8 +804,9 @@ int main(int argc, char** argv)
         guiRenderer.RenderGui(&root);
 
         // ROADMAP 4.7 Overhead Map — top-down 3D pass. Drawn AFTER the GUI pass
-        // so the 3D map image overwrites the opaque black map sub-viewport, then
-        // the party marker is re-rendered on top (scissored to the map rect).
+        // (FRAME.SCX chrome + portraits + icon buttons) so the 3D map image
+        // overwrites the view-area cut-out, then the party marker is re-rendered
+        // on top (scissored to the view-area rect).
         if (gameState.GetGameData().IsLoaded() && guiManager.InOverheadMap())
         {
             // Player tile → top-down camera target (player-centred, north-up).
@@ -814,12 +815,13 @@ int main(int argc, char** argv)
             const float pty = static_cast<float>(playerTile.y);
 
             // Ortho box in normalised GL units (gTileSize/gWorldScale = 640/tile).
-            // Vertical span = zoom tiles; horizontal keeps the 320:170 map aspect
-            // so the projected scene isn't distorted.
+            // Vertical span = zoom tiles; horizontal keeps the view-area aspect
+            // (294:100, the main screen's 3D-view cut-out) so the projected scene
+            // isn't distorted within the map rectangle.
             constexpr float kUnitsPerTile = BAK::gTileSize / BAK::gWorldScale;
             const float tilesVert = guiManager.mOverheadMap.GetZoom();
             const float halfH = (tilesVert * 0.5f) * kUnitsPerTile;
-            const float halfW = halfH * (320.0f / 170.0f);
+            const float halfW = halfH * (Gui::OverheadMap::kViewW / Gui::OverheadMap::kViewH);
             mapCamera.UseOrthoMatrix(-halfW, halfW, -halfH, halfH, 1.0f, kMapFar);
 
             // Camera above the player tile centre, looking straight down (pitch
@@ -838,13 +840,19 @@ int main(int argc, char** argv)
             Graphics::Light mapLight = light;
             mapLight.mFogStrength = 0.0f;
 
-            // Map sub-viewport = the ClipRegion's framebuffer rect: full width,
-            // top 85% (button row = bottom 15%), y-flipped to GL bottom-origin.
-            const int mapY  = static_cast<int>(fbH * 0.15f);
-            const int mapHp = fbH - mapY;
-            glViewport(0, mapY, fbW, mapHp);
+            // Map sub-viewport = the main screen's 3D-view cut-out (x13 y12
+            // w294 h100 in 320×200 logical), scaled to framebuffer pixels and
+            // y-flipped to GL bottom-origin (top edge GUI y=12 → GL y=fbH-12·sy).
+            const float sx = static_cast<float>(fbW) / 320.0f;
+            const float sy = static_cast<float>(fbH) / 200.0f;
+            const int viewX = static_cast<int>(Gui::OverheadMap::kViewX * sx);
+            const int viewW = static_cast<int>(Gui::OverheadMap::kViewW * sx);
+            const int viewYBot = fbH - static_cast<int>(
+                (Gui::OverheadMap::kViewY + Gui::OverheadMap::kViewH) * sy);
+            const int viewH = static_cast<int>(Gui::OverheadMap::kViewH * sy);
+            glViewport(viewX, viewYBot, viewW, viewH);
             glEnable(GL_SCISSOR_TEST);
-            glScissor(0, mapY, fbW, mapHp);
+            glScissor(viewX, viewYBot, viewW, viewH);
             // The GUI pass disables depth test; re-enable for the 3D draw.
             glEnable(GL_DEPTH_TEST);
             glDepthMask(GL_TRUE);
@@ -887,7 +895,6 @@ int main(int argc, char** argv)
             const float basePx = 7.0f * mapScale;
             const float legPx  = 4.0f * mapScale;
             const float hPx    = std::sqrt(legPx * legPx - (basePx * 0.5f) * (basePx * 0.5f));
-            const int mapHpFb  = fbH - mapY; // map-rect height in FB pixels
 
             const glm::vec3 fpDir = camera.GetDirection();
             const float horizLen = std::sqrt(fpDir.x * fpDir.x + fpDir.z * fpDir.z);
@@ -905,8 +912,8 @@ int main(int argc, char** argv)
             const glm::vec2 vTip = tipDir * (hPx * 2.0f / 3.0f);
             const glm::vec2 vBL  = -tipDir * (hPx / 3.0f) + perp * (basePx * 0.5f);
             const glm::vec2 vBR  = -tipDir * (hPx / 3.0f) - perp * (basePx * 0.5f);
-            const float cx = 2.0f / static_cast<float>(fbW);
-            const float cy = 2.0f / static_cast<float>(mapHpFb);
+            const float cx = 2.0f / static_cast<float>(viewW);
+            const float cy = 2.0f / static_cast<float>(viewH);
             const float verts[18] = {
                 vTip.x * cx, vTip.y * cy, 0.0f, 0.0f, 0.0f, 0.0f,
                 vBL.x  * cx, vBL.y  * cy, 0.0f, 0.0f, 0.0f, 0.0f,

@@ -120,7 +120,8 @@ GuiManager::GuiManager(
     },
     mOverheadMap{
         *this,
-        mFontManager.GetGameFont(),
+        mBackgrounds,
+        mIcons,
         mGameState
     },
     mMoredhelScreen{
