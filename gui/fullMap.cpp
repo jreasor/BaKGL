@@ -45,13 +45,13 @@ FullMap::FullMap(
     mExitButton{
         mLayout.GetWidgetLocation(sExitWidget),
         mLayout.GetWidgetDimensions(sExitWidget),
-        mFont,
-        "#Exit",
-        [this]{ 
+        icons.GetButtonTextures(60),
+        [this]{
             mGuiManager.DoFade(.8, [this]{
                 mPlayerPositionFlasher->Stop();
                 mGuiManager.ExitSimpleScreen(); });
-        }
+        },
+        []{}
     },
     mPopup{
         glm::vec2{},
@@ -77,6 +77,8 @@ FullMap::FullMap(
     mGameStartScreenMode{false},
     mLogger{Logging::LogState::GetLogger("Gui::FullMap")}
 {
+    mExitButton.CenterImage(std::get<glm::vec2>(mIcons.GetButton(60)));
+
     mTowns.reserve(mFMapTowns.GetTowns().size());
     for (const auto& town : mFMapTowns.GetTowns())
     {

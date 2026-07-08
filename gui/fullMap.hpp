@@ -61,7 +61,7 @@ private:
 
     BAK::Layout mLayout;
 
-    ClickButton mExitButton;
+    ClickButtonImage mExitButton;
     Button mPopup;
     TextBox mPopupText;
 
