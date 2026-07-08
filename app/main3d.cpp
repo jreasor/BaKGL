@@ -873,10 +873,13 @@ int main(int argc, char** argv)
         // on top (scissored to the view-area rect).
         if (gameState.GetGameData().IsLoaded() && guiManager.InOverheadMap())
         {
-            // Player tile → top-down camera target (player-centred, north-up).
-            const auto playerTile = BAK::GetTile(gameState.GetLocation().mPosition);
-            const float ptx = static_cast<float>(playerTile.x);
-            const float pty = static_cast<float>(playerTile.y);
+            // Player's EXACT game position → top-down camera target (player-
+            // centred, north-up). Inc 1 used the tile centre because the map was
+            // display-only and the party was static; with movement the tile-centre
+            // quantization swallowed sub-tile steps (the map wouldn't scroll until
+            // a whole tile boundary was crossed — "Up/Down do nothing"). Using the
+            // exact position makes every frame's movement scroll the map smoothly.
+            const auto playerPos = gameState.GetLocation().mPosition;
 
             // Ortho box in normalised GL units (gTileSize/gWorldScale = 640/tile).
             // Vertical span = zoom tiles; horizontal keeps the view-area aspect
@@ -888,13 +891,13 @@ int main(int argc, char** argv)
             const float halfW = halfH * (Gui::OverheadMap::kViewW / Gui::OverheadMap::kViewH);
             mapCamera.UseOrthoMatrix(-halfW, halfW, -halfH, halfH, 1.0f, kMapFar);
 
-            // Camera above the player tile centre, looking straight down (pitch
-            // -pi/2 per Camera::GetDirection). Position in BAK units; the view
-            // matrix divides by gWorldScale. BAK +y north → GL -z, so negate z.
+            // Camera above the player's exact position, looking straight down
+            // (pitch -pi/2 per Camera::GetDirection). Position in BAK units; the
+            // view matrix divides by gWorldScale. BAK +y north → GL -z, so negate.
             mapCamera.SetPosition(glm::vec3{
-                ptx * BAK::gTileSize + BAK::gTileSize * 0.5f,
+                static_cast<float>(playerPos.x),
                 kMapCamHeightBAK,
-                -(pty * BAK::gTileSize + BAK::gTileSize * 0.5f)});
+                -static_cast<float>(playerPos.y)});
             mapCamera.SetAngle(glm::vec2{
                 kMapNorthUpYaw,
                 -std::numbers::pi_v<float> / 2.0f});
