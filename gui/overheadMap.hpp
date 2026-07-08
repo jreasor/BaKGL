@@ -81,9 +81,9 @@ private:
     float mZoom{};
 
     static constexpr float kZoomDefault = 6.0f;    // tiles visible (vertical)
-    static constexpr float kZoomMinTiles = 0.25f;  // closest zoom-in (quarter-tile)
+    static constexpr float kZoomMinTiles = 0.05f;  // closest zoom-in (1/20 tile)
     static constexpr float kZoomMaxTiles = 50.0f;  // farthest zoom out
-    static constexpr float kZoomStep    = 0.5f;
+    static constexpr float kZoomStep    = 0.25f;   // fine sub-tile steps
 
     // REQ_MAIN.DAT button-bar geometry (320×200, y-down): 6 slots, 34×29 each,
     // in a 3×2 grid. Slot idx 4 (top-left) is intentionally left blank.
