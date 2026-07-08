@@ -24,6 +24,7 @@
 #include "bak/time.hpp"
 #include "bak/types.hpp"
 #include "bak/zone.hpp"
+#include "bak/overheadMapClassifier.hpp"
 
 #include "com/assert.hpp"
 #include "com/logger.hpp"
@@ -36,6 +37,36 @@
 #include <unordered_set>
 #include <utility>
 #include <variant>
+
+namespace {
+// ROADMAP 8.2: EntityType set that is walk-through / teleport — excluded from
+// solid collision so GDS/zone transitions (rift gates, tunnels) still fire when
+// the party walks into them. Doors/entrances are NOT here: per original-BaK
+// ground truth you click a door to transition — you don't walk through it, so
+// the door mesh blocks.
+bool IsWalkThroughTransition(BAK::EntityType et)
+{
+    using enum BAK::EntityType;
+    return et == GATE || et == TUNNEL1 || et == TUNNEL2;
+}
+
+// Tunable per-EntityType collider radius (BAK units; one tile = gTileSize =
+// 64000). Small for props, larger for buildings / mountains. Adjust per visual
+// feedback.
+double ColliderRadius(BAK::EntityType et)
+{
+    using enum BAK::EntityType;
+    switch (et)
+    {
+        case BUILDING: [[fallthrough]];
+        case HILL: [[fallthrough]];
+        case LANDSCAPE:
+            return 16000.0;
+        default:
+            return 2000.0;
+    }
+}
+} // namespace
 
 namespace Game {
 
@@ -188,7 +219,8 @@ void GameRunner::LoadSystems()
             if (item.GetZoneItem().GetVertices().size() > 1)
             {
                 auto id = mSystems->GetNextItemId();
-                mEntityTypes[id] = item.GetZoneItem().GetEntityType();
+                const auto et = item.GetZoneItem().GetEntityType();
+                mEntityTypes[id] = et;
                 auto rotation = item.GetZoneItem().IsSprite() ? Graphics::sNinetyDegreeRotation : item.GetRotation();
                 auto renderable = Renderable{
                     id,
@@ -201,6 +233,17 @@ void GameRunner::LoadSystems()
                     mSystems->AddSprite(renderable);
                 else
                     mSystems->AddRenderable(renderable);
+
+                // ROADMAP 8.2: solid-object collider (objects + mountains).
+                // GetGridEffect NotWalkable minus walk-through/teleport types.
+                if (BAK::GetGridEffect(et) == BAK::GridEffect::NotWalkable
+                    && !IsWalkThroughTransition(et))
+                {
+                    mSystems->AddCollider(Intersectable{
+                        id,
+                        Intersectable::Circle{ColliderRadius(et)},
+                        item.GetLocation()});
+                }
 
                 if (item.GetZoneItem().GetClickable())
                 {
@@ -303,6 +346,21 @@ void GameRunner::LoadSystems()
         mClickables.emplace(id, ClickableEntity(BAK::EntityTypeFromModelName(item.GetName()), &container));
     }
 
+    // ROADMAP 8.2: water colliders — River/Waterfall tiles block (full-tile),
+    // per original-BaK ground truth ("no passing on any water"). Bank/Sand =
+    // shore → walkable.
+    for (const auto& world : mZoneData->mWorldTiles.GetTiles())
+    {
+        const auto terrain = BAK::ClassifyTileTerrain(world.GetItems());
+        if (terrain == BAK::Terrain::River || terrain == BAK::Terrain::Waterfall)
+        {
+            mSystems->AddCollider(Intersectable{
+                mSystems->GetNextItemId(),
+                Intersectable::Rect{BAK::gTileSize, BAK::gTileSize},
+                world.GetCenter()});
+        }
+    }
+
     const auto monsters = BAK::MonsterNames::Get();
     for (const auto& world : mZoneData->mWorldTiles.GetTiles())
     {
@@ -337,6 +395,53 @@ void GameRunner::LoadSystems()
     mGridVisible = false;
     mGridCellRenderables.clear();
     mGridCells.clear();
+}
+
+bool GameRunner::IsBlocked(glm::vec3 pos) const
+{
+    return mSystems && mSystems->IsBlocked(pos);
+}
+
+bool GameRunner::TryMoveForward(Camera& c)
+{
+    c.MoveForward();
+    if (IsBlocked(c.GetPosition())) { c.UndoPositionChange(); return false; }
+    return true;
+}
+
+bool GameRunner::TryMoveBackward(Camera& c)
+{
+    c.MoveBackward();
+    if (IsBlocked(c.GetPosition())) { c.UndoPositionChange(); return false; }
+    return true;
+}
+
+bool GameRunner::TryStrafeForward(Camera& c)
+{
+    c.StrafeForward();
+    if (IsBlocked(c.GetPosition())) { c.UndoPositionChange(); return false; }
+    return true;
+}
+
+bool GameRunner::TryStrafeBackward(Camera& c)
+{
+    c.StrafeBackward();
+    if (IsBlocked(c.GetPosition())) { c.UndoPositionChange(); return false; }
+    return true;
+}
+
+bool GameRunner::TryStrafeLeft(Camera& c)
+{
+    c.StrafeLeft();
+    if (IsBlocked(c.GetPosition())) { c.UndoPositionChange(); return false; }
+    return true;
+}
+
+bool GameRunner::TryStrafeRight(Camera& c)
+{
+    c.StrafeRight();
+    if (IsBlocked(c.GetPosition())) { c.UndoPositionChange(); return false; }
+    return true;
 }
 
 void GameRunner::LoadTileActors(std::uint8_t tileIndex)

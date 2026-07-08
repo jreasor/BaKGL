@@ -155,6 +155,11 @@ void Systems::AddIntersectable(const Intersectable& item)
     mIntersectables.emplace_back(item);
 }
 
+void Systems::AddCollider(const Intersectable& item)
+{
+    mColliders.emplace_back(item);
+}
+
 void Systems::AddClickable(const Clickable& item)
 {
     mClickables.emplace_back(item);
@@ -240,6 +245,16 @@ std::vector<BAK::EntityIndex> Systems::RunIntersection(glm::vec3 cameraPos) cons
     return result;
 }
 
+bool Systems::IsBlocked(glm::vec3 pos) const
+{
+    for (const auto& collider : GetColliders())
+    {
+        if (collider.Intersects(pos))
+            return true;
+    }
+    return false;
+}
+
 BAK::EntityIndex Systems::AddTextRenderable(Graphics::TextRenderable r)
 {
     auto id = GetNextItemId();
@@ -285,6 +300,7 @@ const std::vector<Graphics::TextRenderable>& Systems::GetTextRenderables() const
 }
 
 const std::vector<Intersectable>& Systems::GetIntersectables() const { return mIntersectables; }
+const std::vector<Intersectable>& Systems::GetColliders() const { return mColliders; }
 const std::vector<Renderable>& Systems::GetRenderables() const { return mRenderables; }
 const std::vector<DynamicRenderable>& Systems::GetDynamicRenderables() const { return mDynamicRenderables; }
 const std::vector<Renderable>& Systems::GetSprites() const { return mSprites; }
