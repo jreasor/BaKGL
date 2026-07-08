@@ -140,6 +140,13 @@ Config::Config LoadConfigFile(std::string configPath)
         std::cout << "Not loading a config file.\n";
     }
 
+    // Task 0.6: resolve relative Paths entries against the config file's
+    // directory (absolute + symlink-resolved), not cwd, so engine/config.json
+    // is portable and main3d no longer has to be run from the project root.
+    // Empty/absolute entries pass through; no-op if no config was loaded.
+    if (!loadedPath.empty())
+        Config::ResolvePaths(config.mPaths, loadedPath);
+
     // Task 4.4: record the actually-loaded config path so the in-game settings
     // screen can persist graphics values back to it without a ctor param. Empty
     // if no config was loaded (the screen logs + no-ops on an empty path).

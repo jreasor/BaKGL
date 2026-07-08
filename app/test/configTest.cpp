@@ -136,3 +136,58 @@ TEST(ConfigSaveGraphicsValues, ReturnsFalseOnMissingPath)
     Config::Graphics g{};
     EXPECT_FALSE(Config::SaveGraphicsValues("/no/such/path/bak_config_test.json", g));
 }
+
+// Task 0.6: relative Paths entries resolve against the config file's directory
+// (absolute + symlink-resolved via weakly_canonical), so the engine is
+// cwd-independent. Empty and already-absolute entries pass through unchanged.
+TEST(ConfigResolvePaths, ResolvesRelativeEntriesAgainstConfigDir)
+{
+    TempConfig cfg{"{}"};
+    Config::Paths p{};
+    p.mGameData = "game_files/";
+    p.mAssets4k = "../assets_4k/";
+    p.mGraphicsOverrides = "mods/overrides";
+    p.mDialogMods = "dialogMods";
+    p.mShaders = "/abs/shaders";  // absolute -> unchanged
+    p.mSaves = "";                 // empty -> unchanged
+    p.mLuaMods = "";
+
+    Config::ResolvePaths(p, cfg.mPath);
+
+    // Expected = same join the implementation does, so the test is robust to
+    // /tmp -> /private/tmp symlink resolution on macOS (weakly_canonical).
+    std::error_code ec;
+    const auto configDir =
+        std::filesystem::weakly_canonical(cfg.mPath, ec).parent_path();
+    ASSERT_FALSE(ec) << "weakly_canonical failed on existing temp config";
+    const auto expect = [&](const std::string& entry) {
+        return (configDir / std::filesystem::path{entry})
+            .lexically_normal().string();
+    };
+
+    EXPECT_EQ(p.mGameData, expect("game_files/"));
+    EXPECT_EQ(p.mAssets4k, expect("../assets_4k/"));
+    EXPECT_EQ(p.mGraphicsOverrides, expect("mods/overrides"));
+    EXPECT_EQ(p.mDialogMods, expect("dialogMods"));
+    // absolute passes through verbatim
+    EXPECT_EQ(p.mShaders, "/abs/shaders");
+    // empty stays empty
+    EXPECT_EQ(p.mSaves, "");
+    EXPECT_EQ(p.mLuaMods, "");
+
+    // every resolved relative entry is now absolute (cwd-independent)
+    EXPECT_TRUE(std::filesystem::path{p.mGameData}.is_absolute());
+    EXPECT_TRUE(std::filesystem::path{p.mAssets4k}.is_absolute());
+    // ".." is normalized away: <configDir>/../assets_4k has no ".." component
+    EXPECT_EQ(p.mAssets4k.find(".."), std::string::npos);
+}
+
+TEST(ConfigResolvePaths, EmptyConfigPathIsNoOp)
+{
+    Config::Paths p{};
+    p.mGameData = "game_files/";
+    p.mAssets4k = "assets_4k/";
+    Config::ResolvePaths(p, "");  // no config loaded -> nothing resolved
+    EXPECT_EQ(p.mGameData, "game_files/");
+    EXPECT_EQ(p.mAssets4k, "assets_4k/");
+}

@@ -1,10 +1,15 @@
 {
     "Paths": {
+        // Task 0.6: relative paths resolve against THIS file's directory
+        // (engine/), not cwd -- so main3d can be run from anywhere via
+        // `-c <abs path>/engine/config.json`. game_files/ and assets_4k/
+        // live at the project root (a sibling of engine/), hence "../".
+        // Absolute paths pass through unchanged.
         "Shaders": "",
         "Saves": "",
-        "GameData": "game_files/",
+        "GameData": "../game_files/",
         "GraphicsOverrides": "",
-        "Assets4k": "assets_4k/"
+        "Assets4k": "../assets_4k/"
     },
     "Graphics": {
         "ResolutionScale": 4.0,

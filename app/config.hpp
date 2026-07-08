@@ -108,4 +108,14 @@ Config LoadConfig(std::string path);
 // Returns false if the path is missing/unreadable (no-op; caller logs).
 bool SaveGraphicsValues(const std::string& configPath, const Graphics& g);
 
+// Task 0.6: rewrite every Paths entry in place so a relative path resolves
+// against the config file's directory (not cwd), making engine/config.json
+// portable and removing the "must run main3d from the project root" constraint.
+// The config dir is taken absolute + symlink-resolved (weakly_canonical), so
+// the resolved entries are absolute and cwd-independent. Empty entries (the
+// "use the default" sentinel) and already-absolute entries pass through
+// unchanged. loadedConfigPath empty (no config loaded) -> no-op. Called from
+// LoadConfigFile in main3d.cpp right after the config is read.
+void ResolvePaths(Paths& paths, const std::string& loadedConfigPath);
+
 }

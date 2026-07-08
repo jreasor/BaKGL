@@ -202,4 +202,38 @@ bool SaveGraphicsValues(const std::string& configPath, const Graphics& g)
     return true;
 }
 
+void ResolvePaths(Paths& paths, const std::string& loadedConfigPath)
+{
+    if (loadedConfigPath.empty()) return;
+
+    // weakly_canonical: absolute + symlink-resolved. The config file was just
+    // loaded so it exists; the error_code overload is belt-and-suspenders so a
+    // surprise FS error degrades to the raw (cwd-relative) parent path instead
+    // of throwing out of config load.
+    std::error_code ec;
+    const auto canonical = std::filesystem::weakly_canonical(loadedConfigPath, ec);
+    const auto configDir = ec
+        ? std::filesystem::path{loadedConfigPath}.parent_path()
+        : canonical.parent_path();
+
+    const auto resolve = [&configDir](std::string& entry)
+    {
+        if (entry.empty()) return;
+        const auto p = std::filesystem::path{entry};
+        if (p.is_absolute()) return;
+        // lexically_normal cleans any ".."/"." components introduced by the
+        // join (e.g. <configDir>/../game_files -> <projectRoot>/game_files)
+        // without touching the filesystem.
+        entry = (configDir / p).lexically_normal().string();
+    };
+
+    resolve(paths.mShaders);
+    resolve(paths.mSaves);
+    resolve(paths.mGameData);
+    resolve(paths.mGraphicsOverrides);
+    resolve(paths.mAssets4k);
+    resolve(paths.mDialogMods);
+    resolve(paths.mLuaMods);
+}
+
 }
