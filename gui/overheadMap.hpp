@@ -59,7 +59,7 @@ public:
 
     // Vertical tiles visible in the top-down view (player-centred). The app
     // render loop reads this to size the orthographic projection box.
-    [[nodiscard]] float GetZoom() const { return static_cast<float>(mZoom); }
+    [[nodiscard]] float GetZoom() const { return mZoom; }
 
 private:
     void AddChildren();
@@ -78,12 +78,12 @@ private:
     BAK::GameState& mGameState;
 
     // View span in tiles (player-centred). Tunable calibration constants.
-    unsigned mZoom{};
+    float mZoom{};
 
-    static constexpr unsigned kZoomDefault = 6;    // tiles visible (vertical)
-    static constexpr unsigned kZoomMinTiles = 1;    // zoom in to a single tile
-    static constexpr unsigned kZoomMaxTiles = 50;   // farthest zoom out
-    static constexpr unsigned kZoomStep = 2;
+    static constexpr float kZoomDefault = 6.0f;    // tiles visible (vertical)
+    static constexpr float kZoomMinTiles = 0.25f;  // closest zoom-in (quarter-tile)
+    static constexpr float kZoomMaxTiles = 50.0f;  // farthest zoom out
+    static constexpr float kZoomStep    = 0.5f;
 
     // REQ_MAIN.DAT button-bar geometry (320×200, y-down): 6 slots, 34×29 each,
     // in a 3×2 grid. Slot idx 4 (top-left) is intentionally left blank.
