@@ -82,6 +82,7 @@ public:
     void CutsceneFinished();
     bool InMainView() const override;
     bool InCombatView() const override;
+    bool InOverheadMap() const override;
     void EnterMainView() override;
     void EnterMainMenu(bool gameRunning) override;
     void MoveForward() override;

@@ -252,6 +252,11 @@ bool GuiManager::InCombatView() const
     return mScreenStack.size() > 0 && mScreenStack.Top() == &mCombatScreen;
 }
 
+bool GuiManager::InOverheadMap() const
+{
+    return mScreenStack.size() > 0 && mScreenStack.Top() == &mOverheadMap;
+}
+
 void GuiManager::EnterMainView()
 {
     mLogger.Info() << "Entering main view\n";

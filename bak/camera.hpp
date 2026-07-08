@@ -17,6 +17,11 @@ public:
     glm::mat4 CalculateOrthoMatrix(unsigned width, unsigned height);
     glm::mat4 CalculatePerspectiveMatrix(unsigned width, unsigned height);
     void UseOrthoMatrix(unsigned width, unsigned height);
+    // Explicit-bounds ortho (ROADMAP 4.7 Overhead Map top-down pass): lets the
+    // caller frame an arbitrary world AABB (left/right/bottom/top in normalised
+    // GL units) with its own near/far, instead of the fixed symmetric box the
+    // (width,height) overload hardcodes.
+    void UseOrthoMatrix(float left, float right, float bottom, float top, float znear, float zfar);
     void UsePerspectiveMatrix(unsigned width, unsigned height);
 
     void SetGameLocation(const BAK::GamePositionAndHeading& location);

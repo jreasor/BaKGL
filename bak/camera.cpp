@@ -55,6 +55,14 @@ void Camera::UseOrthoMatrix(unsigned width, unsigned height)
     mProjectionMatrix = CalculateOrthoMatrix(width, height);
 }
 
+void Camera::UseOrthoMatrix(
+    float left, float right,
+    float bottom, float top,
+    float znear, float zfar)
+{
+    mProjectionMatrix = glm::ortho(left, right, bottom, top, znear, zfar);
+}
+
 void Camera::UsePerspectiveMatrix(unsigned width, unsigned height)
 {
     mProjectionMatrix = CalculatePerspectiveMatrix(width, height);

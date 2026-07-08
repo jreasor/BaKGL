@@ -483,6 +483,12 @@ public:
         glEnable(GL_DEPTH_TEST);
     }
 
+    // ROADMAP 4.7 Overhead Map — the top-down camera sits far above the tile
+    // cluster, well beyond the default draw distance, so the per-item cull at
+    // line 339/429 would drop the whole map. Lets the caller widen it for the
+    // top-down pass (and restore the default afterwards).
+    void SetDrawDistance(int drawDistance) { mDrawDistance = drawDistance; }
+
 private:
     static unsigned DecodeEntityId(const glm::vec4& data)
     {

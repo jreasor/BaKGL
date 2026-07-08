@@ -25,6 +25,9 @@ public:
     virtual void DoFade(double duration, std::function<void()>&&) = 0;
     virtual bool InMainView() const = 0;
     virtual bool InCombatView() const = 0;
+    // ROADMAP 4.7 Overhead Map — true while the top-down map screen is on top
+    // of the screen stack (gates the main3d top-down 3D render pass).
+    virtual bool InOverheadMap() const = 0;
     virtual void EnterMainView() = 0;
     virtual void EnterMainMenu(bool gameRunning) = 0;
 

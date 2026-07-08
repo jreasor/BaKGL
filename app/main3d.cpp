@@ -335,6 +335,35 @@ int main(int argc, char** argv)
         1.0f};
     Camera* cameraPtr = &camera;
 
+    // ROADMAP 4.7 Overhead Map — separate top-down ortho camera for the map's
+    // 3D pass. Configured per-frame in the render loop when InOverheadMap().
+    Camera mapCamera{
+        static_cast<unsigned>(width),
+        static_cast<unsigned>(height),
+        400 * 30.0f,
+        1.0f};
+    // Top-down pass tuning knobs (calibrate via the gemma3 vision loop).
+    constexpr float kMapCamHeightBAK  = 100000.0f; // camera Y (BAK units); above the cluster
+    constexpr float kMapNorthUpYaw    = std::numbers::pi_v<float>; // north-up; rotate if gemma3 says so
+    constexpr float kMapFar           = 2000.0f;   // ortho far plane (normalised GL units)
+    constexpr int   kMapDrawDistance  = 2000000;   // BAK units (~31 tiles) — beats the per-item cull
+    constexpr bool  kMapRenderSprites = false;     // billboards render edge-on from straight overhead
+
+    // VAO/VBO for the red party-triangle marker, drawn in clip space over the
+    // map viewport (tip = facing direction). 3 verts × (vec3 pos + vec3 uv);
+    // uses the GUI shader with colorMode = SolidColor (no texture needed).
+    GLuint mapMarkerVao = 0, mapMarkerVbo = 0;
+    glGenVertexArrays(1, &mapMarkerVao);
+    glGenBuffers(1, &mapMarkerVbo);
+    glBindVertexArray(mapMarkerVao);
+    glBindBuffer(GL_ARRAY_BUFFER, mapMarkerVbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 18, nullptr, GL_DYNAMIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 6, static_cast<void*>(nullptr));
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 6, reinterpret_cast<void*>(sizeof(float) * 3));
+    glBindVertexArray(0);
+
     guiManager.mMainView.SetHeading(camera.GetHeading());
 
     // OpenGL 3D Renderer
@@ -459,6 +488,12 @@ int main(int argc, char** argv)
 
     inputHandler.Bind(GLFW_KEY_BACKSPACE,   [&]{ if (root.OnKeyEvent(Gui::KeyPress{GLFW_KEY_BACKSPACE})){ ;} });
     inputHandler.BindCharacter([&](char character){ if(root.OnKeyEvent(Gui::Character{character})){ ;} });
+    // ROADMAP 4.7 Overhead Map — route zoom (+/-) and the F5 framebuffer-dump
+    // diagnostic to the GUI. These aren't movement keys (not in the WASD set
+    // above), so they'd otherwise never reach the screen stack. Forward them as
+    // KeyPress events to root.OnKeyEvent only while the overhead map is open.
+    inputHandler.BindPressed(GLFW_KEY_EQUAL, [&]{ if (guiManager.InOverheadMap()) (void) root.OnKeyEvent(Gui::KeyPress{GLFW_KEY_EQUAL}); });
+    inputHandler.BindPressed(GLFW_KEY_MINUS, [&]{ if (guiManager.InOverheadMap()) (void) root.OnKeyEvent(Gui::KeyPress{GLFW_KEY_MINUS}); });
 
     Graphics::InputHandler::BindKeyboardToWindow(window.get(), inputHandler);
     Graphics::InputHandler::BindMouseToWindow(window.get(), inputHandler);
@@ -661,58 +696,74 @@ int main(int argc, char** argv)
             };
             light.mFogColor = ambient * glm::vec3{.15, .31, .36};
 
-            renderer.BeginDepthMapDraw();
-            renderer.DrawDepthMap(
-                gameRunner.GetZoneRenderData(),
-                gameRunner.mSystems->GetRenderables(),
-                lightCamera);
-            renderer.DrawDepthMap(
-                gameRunner.GetZoneRenderData(),
-                gameRunner.mSystems->GetSprites(),
-                lightCamera);
-            renderer.EndDepthMapDraw();
-
-            glViewport(0, 0, fbW, fbH);
-            // Dark blue background
-            glClearColor(ambient * 0.15f, ambient * 0.31f, ambient * 0.36f, 0.0f);
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-            renderer.DrawWithShadow(
-                gameRunner.GetZoneRenderData(),
-                gameRunner.mSystems->GetRenderables(),
-                light,
-                lightCamera,
-                *cameraPtr,
-                false);
-
-            renderer.DrawWithShadow(
-                gameRunner.GetZoneRenderData(),
-                gameRunner.mSystems->GetSprites(),
-                light,
-                lightCamera,
-                *cameraPtr,
-                true);
-
-            const auto& dynamicRenderables = gameRunner.mSystems->GetDynamicRenderables();
-            for (const auto& obj : dynamicRenderables)
+            if (guiManager.InOverheadMap())
             {
-                std::vector<DynamicRenderable> data{};
-                data.emplace_back(obj);
+                // ROADMAP 4.7 Overhead Map: no shadows on the map (cleared
+                // shadow map → depth 1 → no shadow contribution). Bind+clear
+                // the shadow FB then unbind. The top-down 3D pass itself runs
+                // AFTER the GUI pass so it can overwrite the black map area.
+                renderer.BeginDepthMapDraw();
+                renderer.EndDepthMapDraw();
+
+                glViewport(0, 0, fbW, fbH);
+                glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+                glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            }
+            else
+            {
+                renderer.BeginDepthMapDraw();
+                renderer.DrawDepthMap(
+                    gameRunner.GetZoneRenderData(),
+                    gameRunner.mSystems->GetRenderables(),
+                    lightCamera);
+                renderer.DrawDepthMap(
+                    gameRunner.GetZoneRenderData(),
+                    gameRunner.mSystems->GetSprites(),
+                    lightCamera);
+                renderer.EndDepthMapDraw();
+
+                glViewport(0, 0, fbW, fbH);
+                // Dark blue background
+                glClearColor(ambient * 0.15f, ambient * 0.31f, ambient * 0.36f, 0.0f);
+                glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
                 renderer.DrawWithShadow(
-                    *obj.GetRenderData(),
-                    data,
+                    gameRunner.GetZoneRenderData(),
+                    gameRunner.mSystems->GetRenderables(),
+                    light,
+                    lightCamera,
+                    *cameraPtr,
+                    false);
+
+                renderer.DrawWithShadow(
+                    gameRunner.GetZoneRenderData(),
+                    gameRunner.mSystems->GetSprites(),
                     light,
                     lightCamera,
                     *cameraPtr,
                     true);
-            }
 
-            renderer.DrawText3D(
-                gameRunner.mGlyphStore.GetRenderData(),
-                gameRunner.mSystems->GetTextRenderables(),
-                *cameraPtr);
+                const auto& dynamicRenderables = gameRunner.mSystems->GetDynamicRenderables();
+                for (const auto& obj : dynamicRenderables)
+                {
+                    std::vector<DynamicRenderable> data{};
+                    data.emplace_back(obj);
+                    renderer.DrawWithShadow(
+                        *obj.GetRenderData(),
+                        data,
+                        light,
+                        lightCamera,
+                        *cameraPtr,
+                        true);
+                }
+
+                renderer.DrawText3D(
+                    gameRunner.mGlyphStore.GetRenderData(),
+                    gameRunner.mSystems->GetTextRenderables(),
+                    *cameraPtr);
+            }
         }
 
-        if (gameState.GetGameData().IsLoaded())
+        if (gameState.GetGameData().IsLoaded() && !guiManager.InOverheadMap())
         {
             glDisable(GL_BLEND);
             glDisable(GL_MULTISAMPLE);
@@ -751,6 +802,137 @@ int main(int argc, char** argv)
         glViewport(0, 0, fbW, fbH);
         guiRenderer.SetFramebufferSize(fbW, fbH);
         guiRenderer.RenderGui(&root);
+
+        // ROADMAP 4.7 Overhead Map — top-down 3D pass. Drawn AFTER the GUI pass
+        // so the 3D map image overwrites the opaque black map sub-viewport, then
+        // the party marker is re-rendered on top (scissored to the map rect).
+        if (gameState.GetGameData().IsLoaded() && guiManager.InOverheadMap())
+        {
+            // Player tile → top-down camera target (player-centred, north-up).
+            const auto playerTile = BAK::GetTile(gameState.GetLocation().mPosition);
+            const float ptx = static_cast<float>(playerTile.x);
+            const float pty = static_cast<float>(playerTile.y);
+
+            // Ortho box in normalised GL units (gTileSize/gWorldScale = 640/tile).
+            // Vertical span = zoom tiles; horizontal keeps the 320:170 map aspect
+            // so the projected scene isn't distorted.
+            constexpr float kUnitsPerTile = BAK::gTileSize / BAK::gWorldScale;
+            const float tilesVert = guiManager.mOverheadMap.GetZoom();
+            const float halfH = (tilesVert * 0.5f) * kUnitsPerTile;
+            const float halfW = halfH * (320.0f / 170.0f);
+            mapCamera.UseOrthoMatrix(-halfW, halfW, -halfH, halfH, 1.0f, kMapFar);
+
+            // Camera above the player tile centre, looking straight down (pitch
+            // -pi/2 per Camera::GetDirection). Position in BAK units; the view
+            // matrix divides by gWorldScale. BAK +y north → GL -z, so negate z.
+            mapCamera.SetPosition(glm::vec3{
+                ptx * BAK::gTileSize + BAK::gTileSize * 0.5f,
+                kMapCamHeightBAK,
+                -(pty * BAK::gTileSize + BAK::gTileSize * 0.5f)});
+            mapCamera.SetAngle(glm::vec2{
+                kMapNorthUpYaw,
+                -std::numbers::pi_v<float> / 2.0f});
+
+            // No fog on the map (fog is radial world-distance → would wash the
+            // whole map out from this far above).
+            Graphics::Light mapLight = light;
+            mapLight.mFogStrength = 0.0f;
+
+            // Map sub-viewport = the ClipRegion's framebuffer rect: full width,
+            // top 85% (button row = bottom 15%), y-flipped to GL bottom-origin.
+            const int mapY  = static_cast<int>(fbH * 0.15f);
+            const int mapHp = fbH - mapY;
+            glViewport(0, mapY, fbW, mapHp);
+            glEnable(GL_SCISSOR_TEST);
+            glScissor(0, mapY, fbW, mapHp);
+            // The GUI pass disables depth test; re-enable for the 3D draw.
+            glEnable(GL_DEPTH_TEST);
+            glDepthMask(GL_TRUE);
+            glClear(GL_DEPTH_BUFFER_BIT);
+
+            // Widen the draw distance so the high camera doesn't cull the map,
+            // then restore the configured value for the next first-person frame.
+            renderer.SetDrawDistance(kMapDrawDistance);
+            renderer.DrawWithShadow(
+                gameRunner.GetZoneRenderData(),
+                gameRunner.mSystems->GetRenderables(),
+                mapLight,
+                lightCamera,
+                mapCamera,
+                false);
+            if (kMapRenderSprites)
+            {
+                renderer.DrawWithShadow(
+                    gameRunner.GetZoneRenderData(),
+                    gameRunner.mSystems->GetSprites(),
+                    mapLight,
+                    lightCamera,
+                    mapCamera,
+                    true);
+            }
+            renderer.SetDrawDistance(config.mGraphics.mDrawDistance);
+
+            // Party marker: a red isosceles triangle (7px base / 4px legs at
+            // 320-wide, the original BaK marker) scaled to the current map
+            // resolution, tip pointing in the player's facing direction.
+            //
+            // Built in map-rect FB-pixel space so x/y scale equally (the
+            // triangle stays rigid when rotated — no aspect skew), then each
+            // axis is converted to clip separately. The facing direction is
+            // derived from the first-person camera's forward vector
+            // transformed by the top-down mapCamera view matrix — correct by
+            // construction and auto-matches the north-up framing (fixes the
+            // E/W swap a hand-rolled heading formula produced).
+            const float mapScale = static_cast<float>(fbW) / 320.0f;
+            const float basePx = 7.0f * mapScale;
+            const float legPx  = 4.0f * mapScale;
+            const float hPx    = std::sqrt(legPx * legPx - (basePx * 0.5f) * (basePx * 0.5f));
+            const int mapHpFb  = fbH - mapY; // map-rect height in FB pixels
+
+            const glm::vec3 fpDir = camera.GetDirection();
+            const float horizLen = std::sqrt(fpDir.x * fpDir.x + fpDir.z * fpDir.z);
+            const glm::vec3 fwd = (horizLen > 1e-6f)
+                ? glm::vec3{fpDir.x / horizLen, 0.0f, fpDir.z / horizLen}
+                : glm::vec3{0.0f, 0.0f, -1.0f};
+            const glm::vec4 tipEye = mapCamera.GetViewMatrix() * glm::vec4{fwd, 0.0f};
+            const glm::vec2 tipRaw{tipEye.x, tipEye.y};
+            const float tlen = std::sqrt(tipRaw.x * tipRaw.x + tipRaw.y * tipRaw.y);
+            const glm::vec2 tipDir = (tlen > 1e-6f) ? tipRaw / tlen : glm::vec2{0.0f, 1.0f};
+            const glm::vec2 perp{tipDir.y, -tipDir.x}; // 90° clockwise (screen-right)
+
+            // Vertices in FB-pixel space (centroid at origin, y-up), rotated so
+            // the tip points along tipDir; then each axis → clip (isotropic).
+            const glm::vec2 vTip = tipDir * (hPx * 2.0f / 3.0f);
+            const glm::vec2 vBL  = -tipDir * (hPx / 3.0f) + perp * (basePx * 0.5f);
+            const glm::vec2 vBR  = -tipDir * (hPx / 3.0f) - perp * (basePx * 0.5f);
+            const float cx = 2.0f / static_cast<float>(fbW);
+            const float cy = 2.0f / static_cast<float>(mapHpFb);
+            const float verts[18] = {
+                vTip.x * cx, vTip.y * cy, 0.0f, 0.0f, 0.0f, 0.0f,
+                vBL.x  * cx, vBL.y  * cy, 0.0f, 0.0f, 0.0f, 0.0f,
+                vBR.x  * cx, vBR.y  * cy, 0.0f, 0.0f, 0.0f, 0.0f,
+            };
+            glBindVertexArray(mapMarkerVao);
+            glBindBuffer(GL_ARRAY_BUFFER, mapMarkerVbo);
+            glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(verts), verts);
+
+            guiRenderer.mShader.UseProgramGL();
+            const glm::mat4 ident{1.0f};
+            guiRenderer.mShader.SetUniform(guiRenderer.mCamera.mMvpMatrixId, ident);
+            guiRenderer.mShader.SetUniform(guiRenderer.mCamera.mModelMatrixId, ident);
+            guiRenderer.mShader.SetUniform(guiRenderer.mCamera.mViewMatrixId, ident);
+            guiRenderer.mShader.SetUniform(guiRenderer.mBlockColorId, glm::vec4{0.85f, 0.10f, 0.10f, 1.0f});
+            guiRenderer.mShader.SetUniform(guiRenderer.mColorModeId, 1); // SolidColor
+
+            glDisable(GL_DEPTH_TEST);
+            glDrawArrays(GL_TRIANGLES, 0, 3);
+            glEnable(GL_DEPTH_TEST);
+            glBindVertexArray(0);
+
+            // Restore the default-FB viewport + drop scissor for ImGui.
+            glViewport(0, 0, fbW, fbH);
+            glDisable(GL_SCISSOR_TEST);
+        }
 
         // { *** IMGUI START ***
         if (showImgui)
