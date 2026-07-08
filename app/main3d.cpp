@@ -573,6 +573,31 @@ int main(int argc, char** argv)
             fbH = static_cast<int>(height);
         }
 
+        // Task 4.4 fix: guiScaleInv maps the system cursor (GLFW content/point
+        // coords) into the 320x200 logical GUI space. Deriving it from the
+        // configured ResolutionScale (1/scale) is only correct when the window
+        // content size == 320x*scale -- i.e. windowed mode. In fullscreen the
+        // content size is the display's native point size (e.g. 1728x1117 on a
+        // 16" MBP, not 3456x2160), so 1/scale makes the in-game cursor desync
+        // from the system cursor -- linearly, worst at the bottom-right, and at
+        // 4K bad enough that the cursor can't reach the right/bottom of the GUI
+        // (can't get back to Settings). Recompute from the ACTUAL window content
+        // size each frame so the mapping tracks the on-screen content scale in
+        // windowed, fullscreen, any ResolutionScale, any Retina factor. (The mouse
+        // callbacks capture guiScaleInv by reference, so this per-frame update
+        // propagates; 3D picking uses raw clickPos and is untouched. In windowed
+        // mode contentW == width == 320*scale, so this is a no-op there.)
+        int contentW = 0, contentH = 0;
+        glfwGetWindowSize(window.get(), &contentW, &contentH);
+        if (contentW <= 0 || contentH <= 0)
+        {
+            contentW = static_cast<int>(width);
+            contentH = static_cast<int>(height);
+        }
+        guiScaleInv = glm::vec2{
+            nativeWidth  / static_cast<float>(contentW),
+            nativeHeight / static_cast<float>(contentH)};
+
         currentTime = glfwGetTime();
 
         deltaTime = float(currentTime - lastTime);
