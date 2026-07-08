@@ -95,12 +95,16 @@ void LoadFilter()
     Logging::LogDebug(__FUNCTION__) << "Remaining: " << fb.GetBytesLeft() << "\n";
 }
 
-void LoadZoneDefDat(ZoneNumber zone)
+ZoneDefInfo LoadZoneDefDatInfo(ZoneNumber zone)
 {
     auto zoneLabel = ZoneLabel{zone.mValue};
     auto fb = FileBufferFactory::Get().CreateDataBuffer(zoneLabel.GetZoneDefault());
     Logging::LogDebug(__FUNCTION__) << "Zone: " << zone.mValue << "\n";
+    return ParseZoneDefDat(fb);
+}
 
+ZoneDefInfo ParseZoneDefDat(FileBuffer& fb)
+{
     const auto zoneType = fb.GetUint16LE();
     const auto threeDParam = fb.GetUint16LE();
     const auto playerPos_fieldA = fb.GetUint32LE();
@@ -132,6 +136,21 @@ void LoadZoneDefDat(ZoneNumber zone)
     Logging::LogDebug(__FUNCTION__) << " 15: " << unknown15 << "\n";
     Logging::LogDebug(__FUNCTION__) << " 16: " << unknown16 << " 17: " << unknown17 << "\n";
     Logging::LogDebug(__FUNCTION__) << "Remaining: " << fb.GetBytesLeft() << "\n";
+
+    return ZoneDefInfo{
+        static_cast<std::uint16_t>(zoneType),
+        static_cast<std::uint16_t>(threeDParam),
+        static_cast<std::uint16_t>(horizonDisplayType),
+        static_cast<std::uint8_t>(groundType),
+        static_cast<std::uint8_t>(groundHeight),
+        minMapZoom,
+        maxMapZoom,
+        mapZoomRate};
+}
+
+void LoadZoneDefDat(ZoneNumber zone)
+{
+    (void) LoadZoneDefDatInfo(zone);
 }
 
 ZoneMap LoadZoneMap(ZoneNumber zone)

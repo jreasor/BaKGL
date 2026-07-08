@@ -16,6 +16,7 @@ add_executable(bakTest
     mainViewCutoutTest.cpp
     vramBudgetTest.cpp
     textureUploadTest.cpp
+    zoneDefInfoTest.cpp
     )
 
 target_link_libraries(bakTest
