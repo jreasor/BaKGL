@@ -426,36 +426,6 @@ int main(int argc, char** argv)
             || (guiManager.InCombatView() && !gameRunner.IsAnimationActive());
     };
 
-    // ROADMAP 8.2: collision-gated party movement. Every world move routes
-    // through GameRunner::TryMove* (move-then-UndoPositionChange), so a step
-    // blocked by a mountain/object/water tile is undone and the party stays
-    // put. The debug lightCamera (H) is left free-fly: its position isn't in
-    // world-tile space, so IsBlocked would be meaningless there.
-    auto StepForward = [&]{
-        if (cameraPtr == &camera) return gameRunner.TryMoveForward(*cameraPtr);
-        cameraPtr->MoveForward(); return true;
-    };
-    auto StepBackward = [&]{
-        if (cameraPtr == &camera) return gameRunner.TryMoveBackward(*cameraPtr);
-        cameraPtr->MoveBackward(); return true;
-    };
-    auto StepStrafeForward = [&]{
-        if (cameraPtr == &camera) return gameRunner.TryStrafeForward(*cameraPtr);
-        cameraPtr->StrafeForward(); return true;
-    };
-    auto StepStrafeBackward = [&]{
-        if (cameraPtr == &camera) return gameRunner.TryStrafeBackward(*cameraPtr);
-        cameraPtr->StrafeBackward(); return true;
-    };
-    auto StepStrafeLeft = [&]{
-        if (cameraPtr == &camera) return gameRunner.TryStrafeLeft(*cameraPtr);
-        cameraPtr->StrafeLeft(); return true;
-    };
-    auto StepStrafeRight = [&]{
-        if (cameraPtr == &camera) return gameRunner.TryStrafeRight(*cameraPtr);
-        cameraPtr->StrafeRight(); return true;
-    };
-
     Graphics::InputHandler inputHandler{};
     inputHandler.BindPressed(GLFW_KEY_G, [&]{
         if (glfwGetKey(window.get(), GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS
@@ -476,23 +446,23 @@ int main(int argc, char** argv)
     inputHandler.Bind(GLFW_KEY_UP,   [&]{
         if (guiManager.InOverheadMap())
         {
-            StepForward();
+            cameraPtr->MoveForward();
             UpdateGameTile();
         }
         else if (InputAllowed())
         {
-            StepStrafeForward();
+            cameraPtr->StrafeForward();
             UpdateGameTile();
         }});
     inputHandler.Bind(GLFW_KEY_DOWN, [&]{
         if (guiManager.InOverheadMap())
         {
-            StepBackward();
+            cameraPtr->MoveBackward();
             UpdateGameTile();
         }
         else if (InputAllowed())
         {
-            StepStrafeBackward();
+            cameraPtr->StrafeBackward();
             UpdateGameTile();
         }});
     inputHandler.Bind(GLFW_KEY_LEFT, [&]{
@@ -504,7 +474,7 @@ int main(int argc, char** argv)
         }
         else if (InputAllowed())
         {
-            StepStrafeLeft();
+            cameraPtr->StrafeLeft();
             UpdateGameTile();
         }});
     inputHandler.Bind(GLFW_KEY_RIGHT,[&]{
@@ -516,11 +486,11 @@ int main(int argc, char** argv)
         }
         else if (InputAllowed())
         {
-            StepStrafeRight();
+            cameraPtr->StrafeRight();
             UpdateGameTile();
         }});
 
-    inputHandler.Bind(GLFW_KEY_W, [&]{ if (InputAllowed() || guiManager.InOverheadMap()){StepForward(); UpdateGameTile();}});
+    inputHandler.Bind(GLFW_KEY_W, [&]{ if (InputAllowed() || guiManager.InOverheadMap()){cameraPtr->MoveForward(); UpdateGameTile();}});
     inputHandler.Bind(GLFW_KEY_A, [&]{
         if (guiManager.InOverheadMap())
         {
@@ -530,7 +500,7 @@ int main(int argc, char** argv)
         }
         else if (InputAllowed())
         {
-            StepStrafeLeft();
+            cameraPtr->StrafeLeft();
             UpdateGameTile();
         }});
     inputHandler.Bind(GLFW_KEY_D, [&]{
@@ -542,10 +512,10 @@ int main(int argc, char** argv)
         }
         else if (InputAllowed())
         {
-            StepStrafeRight();
+            cameraPtr->StrafeRight();
             UpdateGameTile();
         }});
-    inputHandler.Bind(GLFW_KEY_S, [&]{ if (InputAllowed() || guiManager.InOverheadMap()){StepBackward(); UpdateGameTile();}});
+    inputHandler.Bind(GLFW_KEY_S, [&]{ if (InputAllowed() || guiManager.InOverheadMap()){cameraPtr->MoveBackward(); UpdateGameTile();}});
     inputHandler.Bind(GLFW_KEY_Q, [&]{
         if (InputAllowed())
         {
@@ -561,8 +531,8 @@ int main(int argc, char** argv)
 
     // MainView movement/compass buttons -> camera (ROADMAP 4.5). Mirror the
     // keyboard binds above; MainView triggers these via the IGuiManager methods.
-    guiManager.mOnMoveForward  = [&]{ if (InputAllowed()){ StepForward();  UpdateGameTile(); } };
-    guiManager.mOnMoveBackward = [&]{ if (InputAllowed()){ StepBackward(); UpdateGameTile(); } };
+    guiManager.mOnMoveForward  = [&]{ if (InputAllowed()){ cameraPtr->MoveForward();  UpdateGameTile(); } };
+    guiManager.mOnMoveBackward = [&]{ if (InputAllowed()){ cameraPtr->MoveBackward(); UpdateGameTile(); } };
     guiManager.mOnRotateLeft   = [&]{ if (InputAllowed()){ cameraPtr->RotateLeft();   guiManager.mMainView.SetHeading(cameraPtr->GetHeading()); } };
     guiManager.mOnRotateRight  = [&]{ if (InputAllowed()){ cameraPtr->RotateRight();  guiManager.mMainView.SetHeading(cameraPtr->GetHeading()); } };
 

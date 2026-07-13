@@ -85,17 +85,6 @@ public:
 
     void DoGenericContainer(BAK::EntityType et, BAK::GenericContainer& container);
     bool CheckAndDoEncounter(glm::uvec2 position);
-
-    // ROADMAP 8.2: party-movement collision (engine-wide, main + overhead views).
-    // IsBlocked queries the solid-collider list built in LoadSystems. TryMove* do
-    // move-then-UndoPositionChange so a blocked step leaves the party in place.
-    bool IsBlocked(glm::vec3 pos) const;
-    bool TryMoveForward(Camera& c);
-    bool TryMoveBackward(Camera& c);
-    bool TryStrafeForward(Camera& c);
-    bool TryStrafeBackward(Camera& c);
-    bool TryStrafeLeft(Camera& c);
-    bool TryStrafeRight(Camera& c);
     
     void RunGameUpdate(bool advanceTime);
     void CheckClickable(unsigned entityId);

@@ -159,7 +159,6 @@ public:
 
     BAK::EntityIndex GetNextItemId();
     void AddIntersectable(const Intersectable& item);
-    void AddCollider(const Intersectable& item);
     void AddClickable(const Clickable& item);
     void AddRenderable(const Renderable& item);
     void RemoveRenderable(BAK::EntityIndex);
@@ -171,10 +170,6 @@ public:
     void EnableSprite(BAK::EntityIndex id, bool visible);
     std::vector<BAK::EntityIndex> RunIntersection(glm::vec3 cameraPos) const;
 
-    // ROADMAP 8.2: world-geometry collision. True if `pos` falls inside any
-    // solid collider (objects, mountains, water tiles). Reuses Intersectable.
-    bool IsBlocked(glm::vec3 pos) const;
-
     BAK::EntityIndex AddTextRenderable(Graphics::TextRenderable r);
     Graphics::TextRenderable* GetTextRenderable(BAK::EntityIndex id);
     void RemoveTextRenderable(BAK::EntityIndex id);
@@ -182,7 +177,6 @@ public:
     const std::vector<Graphics::TextRenderable>& GetTextRenderables() const;
 
     const std::vector<Intersectable>& GetIntersectables() const;
-    const std::vector<Intersectable>& GetColliders() const;
     const std::vector<Renderable>& GetRenderables() const;
     const std::vector<DynamicRenderable>& GetDynamicRenderables() const;
     const std::vector<Renderable>& GetSprites() const;
@@ -192,7 +186,6 @@ private:
     unsigned mNextItemId;
 
     std::vector<Intersectable> mIntersectables;
-    std::vector<Intersectable> mColliders;
     std::vector<Renderable> mRenderables;
     std::vector<Renderable> mSprites;
     std::vector<DynamicRenderable> mDynamicRenderables;
