@@ -290,6 +290,22 @@ int main(int argc, char** argv)
     auto height = nativeHeight * guiScalar;
     auto guiScaleInv = glm::vec2{1 / guiScalar, 1 / guiScalar};
 
+    // 3D-pick scale: maps the system cursor (GLFW content/point coords, the
+    // space clickPos / pointerPos arrive in) into the pick buffer's own pixel
+    // space (mScreenDims). The pick buffer is built once at the REQUESTED
+    // window size (width x height), but the OS may clamp the window to the
+    // monitor work area (e.g. macOS menu bar) so the actual content size is
+    // smaller — e.g. requested 3456x2160 clamped to 3456x2104. Without this
+    // scale the click is mapped against the pre-clamp height (2160) while the
+    // screen renders into the clamped framebuffer (2104), so grid cells sit at
+    // different y-pixels in each buffer and clicks land ~28px above the cell
+    // (worst at the bottom) — combat grid/enemy clicks read 0. Recomputed each
+    // frame from the actual content size, like guiScaleInv. No-op when content
+    // size == requested (windowed, no clamp) or on Retina (pick buffer = logical
+    // = content). See the "Task 4.4 fix" comment below for the same class of
+    // bug on the GUI cursor path.
+    glm::vec2 pickScale{1.0f, 1.0f};
+
     /* OPEN GL / GLFW SETUP  */
 
     auto window = Graphics::MakeGlfwWindow(
@@ -570,7 +586,7 @@ int main(int argc, char** argv)
                 Gui::LeftMousePress{guiScaleInv * clickPos});
             if (!guiHandled && InputAllowed())
             {
-                const auto clickedId = renderer.GetClickedEntity(clickPos);
+                const auto clickedId = renderer.GetClickedEntity(clickPos * pickScale);
                 if (gameRunner.IsGridVisible())
                 {
                     gameRunner.HandleGridCellClick(clickedId, false);
@@ -596,7 +612,7 @@ int main(int argc, char** argv)
                 Gui::RightMousePress{guiScaleInv * click});
             if (!guiHandled && InputAllowed())
             {
-                const auto clickedId = renderer.GetClickedEntity(click);
+                const auto clickedId = renderer.GetClickedEntity(click * pickScale);
                 if (gameRunner.IsGridVisible())
                 {
                     gameRunner.HandleGridCellClick(clickedId, true);
@@ -703,6 +719,14 @@ int main(int argc, char** argv)
         guiScaleInv = glm::vec2{
             nativeWidth  / static_cast<float>(contentW),
             nativeHeight / static_cast<float>(contentH)};
+
+        // pickScale (3D picking) = pick-buffer dims / actual content size.
+        // Mirrors guiScaleInv above; see the pickScale declaration for the full
+        // rationale. No-op when the window wasn't clamped (contentW == width).
+        const auto pickDims = renderer.GetScreenDims();
+        pickScale = glm::vec2{
+            static_cast<float>(pickDims.x) / static_cast<float>(contentW),
+            static_cast<float>(pickDims.y) / static_cast<float>(contentH)};
 
         currentTime = glfwGetTime();
 
@@ -852,7 +876,7 @@ int main(int argc, char** argv)
                     gameRunner.mSystems->GetDynamicRenderables(),
                     *cameraPtr);
             }
-            renderer.StartPickReadback({pointerPosX, pointerPosY});
+            renderer.StartPickReadback(glm::vec2{pointerPosX, pointerPosY} * pickScale);
 
             glEnable(GL_BLEND);
             glEnable(GL_MULTISAMPLE);

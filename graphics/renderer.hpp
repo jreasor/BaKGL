@@ -489,6 +489,11 @@ public:
     // top-down pass (and restore the default afterwards).
     void SetDrawDistance(int drawDistance) { mDrawDistance = drawDistance; }
 
+    // Pick buffer dimensions (logical window px == the viewport the pick pass
+    // renders into and that GetClickedEntity reads from). Exposed so callers can
+    // verify click-coordinate space matches the pick buffer.
+    glm::uvec2 GetScreenDims() const { return mScreenDims; }
+
 private:
     static unsigned DecodeEntityId(const glm::vec4& data)
     {
