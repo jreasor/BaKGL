@@ -839,7 +839,16 @@ void GameRunner::ShowGrid()
                 mZoneData->mObjects.GetObject("GridCell"),
                 glPos,
                 glm::vec3{0, gridRotation, 0},
-                glm::vec3{BAK::gCombatGridCellSize - 1, 1, BAK::gCombatGridCellSize - 1} / BAK::gWorldScale,
+                // Y scale left UN-divided by gWorldScale so the grid-cell quad
+                // hovers ~1 GL above the ground (mesh local y=2.0 * scale.y=0.5);
+                // dividing Y by gWorldScale too collapsed the hover to ~0.02 GL,
+                // sinking the green move-rectangle under the ground texture.
+                // XZ still divided by gWorldScale (cell footprint in GL). Tunable:
+                // raise 0.5f if it still sinks, lower it if it floats too high.
+                glm::vec3{
+                    (BAK::gCombatGridCellSize - 1) / BAK::gWorldScale,
+                    0.5f,
+                    (BAK::gCombatGridCellSize - 1) / BAK::gWorldScale},
                 &mGridCells[i].mColor});
             mSystems->AddRenderable(mGridCellRenderables.back());
         }
