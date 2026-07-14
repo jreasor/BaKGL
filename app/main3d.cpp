@@ -488,12 +488,20 @@ int main(int argc, char** argv)
             cameraPtr->StrafeBackward();
             UpdateGameTile();
         }});
+    // Main-view Left/Right (arrows + A/D) TURN the camera to match original BaK
+    // (Left/Right = rotate view, not strafe). Overhead already turns above; combat
+    // keeps the legacy strafe (the final InputAllowed() branch covers InCombatView).
     inputHandler.Bind(GLFW_KEY_LEFT, [&]{
         if (guiManager.InOverheadMap())
         {
             cameraPtr->RotateLeft();
             guiManager.mMainView.SetHeading(cameraPtr->GetHeading());
             UpdateGameTile();
+        }
+        else if (guiManager.InMainView())
+        {
+            cameraPtr->RotateLeft();
+            guiManager.mMainView.SetHeading(cameraPtr->GetHeading());
         }
         else if (InputAllowed())
         {
@@ -506,6 +514,11 @@ int main(int argc, char** argv)
             cameraPtr->RotateRight();
             guiManager.mMainView.SetHeading(cameraPtr->GetHeading());
             UpdateGameTile();
+        }
+        else if (guiManager.InMainView())
+        {
+            cameraPtr->RotateRight();
+            guiManager.mMainView.SetHeading(cameraPtr->GetHeading());
         }
         else if (InputAllowed())
         {
@@ -521,6 +534,11 @@ int main(int argc, char** argv)
             guiManager.mMainView.SetHeading(cameraPtr->GetHeading());
             UpdateGameTile();
         }
+        else if (guiManager.InMainView())
+        {
+            cameraPtr->RotateLeft();
+            guiManager.mMainView.SetHeading(cameraPtr->GetHeading());
+        }
         else if (InputAllowed())
         {
             cameraPtr->StrafeLeft();
@@ -532,6 +550,11 @@ int main(int argc, char** argv)
             cameraPtr->RotateRight();
             guiManager.mMainView.SetHeading(cameraPtr->GetHeading());
             UpdateGameTile();
+        }
+        else if (guiManager.InMainView())
+        {
+            cameraPtr->RotateRight();
+            guiManager.mMainView.SetHeading(cameraPtr->GetHeading());
         }
         else if (InputAllowed())
         {
