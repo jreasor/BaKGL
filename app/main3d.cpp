@@ -1,4 +1,8 @@
 #include "app/config.hpp"
+// ===== BAK_AGENT (removable automation harness) =====
+#include "app/agentHarness.hpp"
+#include <optional> // std::optional<AgentHarness>
+// ===== END BAK_AGENT =====
 
 #include "bak/backgroundSounds.hpp"
 #include "bak/camera.hpp"
@@ -311,7 +315,10 @@ int main(int argc, char** argv)
     auto window = Graphics::MakeGlfwWindow(
         height,
         width,
-        "BaK");
+        "BaK",
+        // ===== BAK_AGENT (removable automation harness) =====
+        config.mGraphics.mBorderlessWindow);
+        // ===== END BAK_AGENT =====
 
     auto spriteManager = Graphics::SpriteManager{};
     auto guiRenderer = Graphics::GuiRenderer{
@@ -680,6 +687,22 @@ int main(int argc, char** argv)
     // now resident. Snapshot the boot VRAM budget before the render loop.
     Graphics::VramTracker::Get().LogTotal("boot");
 
+    // ===== BAK_AGENT (removable automation harness) =====
+    // Construct the harness only when enabled; otherwise it stays nullopt and
+    // the loop's PollCommands/MaybeCapture no-op (zero behavior change). All
+    // refs (window, inputHandler, gameRunner, guiManager) are live by here.
+    std::optional<AgentHarness> agentHarness;
+    if (config.mAgent.mEnabled)
+    {
+        agentHarness.emplace(
+            window.get(),
+            inputHandler,
+            gameRunner,
+            guiManager,
+            config.mAgent);
+    }
+    // ===== END BAK_AGENT =====
+
     do
     {
         // macOS Retina: the framebuffer is HiDPI-scaled (e.g. 2x) relative to the
@@ -748,6 +771,13 @@ int main(int argc, char** argv)
         glfwPollEvents();
         glfwGetCursorPos(window.get(), &pointerPosX, &pointerPosY);
         inputHandler.HandleInput(window.get());
+
+        // ===== BAK_AGENT (removable automation harness) =====
+        // Inject held keys + poll the control file after real input, so injected
+        // clicks/keys land in this frame's processing (the per-frame guiScaleInv
+        // and pickScale above are already current for the bound lambdas).
+        if (agentHarness) agentHarness->PollCommands();
+        // ===== END BAK_AGENT =====
 
         if (gameState.GetGameData().IsLoaded())
         {
@@ -1120,6 +1150,12 @@ int main(int argc, char** argv)
 
         // *** IMGUI END *** }
      
+        // ===== BAK_AGENT (removable automation harness) =====
+        // Capture a clean game-only frame.png + state.json if a `dump` was
+        // requested, before the swap (so the dump reflects this frame's render).
+        if (agentHarness) agentHarness->MaybeCapture(fbW, fbH);
+        // ===== END BAK_AGENT =====
+
         glfwSwapBuffers(window.get());
     }
     while (glfwGetKey(window.get(), GLFW_KEY_ESCAPE) != GLFW_PRESS
