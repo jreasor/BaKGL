@@ -44,6 +44,17 @@ public:
     void HandleMouseMotionCallback(GLFWwindow* window, double xpos, double ypos);
     void HandleMouseScrollCallback(GLFWwindow* window, double xpos, double ypos);
 
+    // ===== BAK_AGENT (removable automation harness) =====
+    // Singleton accessor (sHandler is set by BindMouseToWindow /
+    // BindKeyboardToWindow) so the agent harness can drive the real handlers.
+    static InputHandler* Get() { return sHandler; }
+    // Invoke the held (glfwGetKey-polled) binding for `key` -- the path WASD /
+    // arrows / backspace use. Lets the harness simulate a held key without a real
+    // keypress (movement is polled, not callback-driven, so this is the one
+    // non-trivial injection). Respects mHandleInput (matches HandleInput).
+    void InvokeHeldKey(int key);
+    // ===== END BAK_AGENT =====
+
 private:
     static void MouseAction(GLFWwindow* window, int button, int action, int mods);
     static void MouseMotionAction(GLFWwindow* window, double xpos, double ypos);

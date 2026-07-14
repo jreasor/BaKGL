@@ -74,6 +74,13 @@ public:
     glm::vec4 GetGridCellColor(unsigned col, unsigned row);
     const Grid& GetGrid() const { return mGrid; }
 
+    // ===== BAK_AGENT (removable automation harness) =====
+    // Read-only view of the combatant roster for the state-JSON snapshot. Named
+    // ...Ref to avoid overload ambiguity with the private by-value GetCombatants()
+    // on a non-const object; returns a const ref (no copy).
+    const std::vector<Combatant>& GetCombatantsRef() const { return mCombatants; }
+    // ===== END BAK_AGENT =====
+
     void SetDisplayAllCells(bool value) { mDisplayAllCells = value; }
     void ToggleDisplayAllCells() { mDisplayAllCells = !mDisplayAllCells; }
 

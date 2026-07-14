@@ -79,6 +79,19 @@ void InputHandler::HandleInput(GLFWwindow* window)
     }
 }
 
+// ===== BAK_AGENT (removable automation harness) =====
+void InputHandler::InvokeHeldKey(int key)
+{
+    if (mHandleInput)
+    {
+        if (const auto it = mKeyBindings.find(key); it != mKeyBindings.end())
+        {
+            std::invoke(it->second);
+        }
+    }
+}
+// ===== END BAK_AGENT =====
+
 void InputHandler::HandleMouseCallback(GLFWwindow* window, int button, int action, int mods)
 {
     if (mHandleInput)

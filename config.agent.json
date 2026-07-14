@@ -1,0 +1,46 @@
+{
+    // Agent automation harness config (see app/agentHarness.{hpp,cpp}).
+    // Gated by Agent.Enabled; the default config.json leaves this section out
+    // entirely, so the harness is inert (zero behavior change) in normal play.
+    //
+    // Launch:  ./build/main3d -c config.agent.json
+    // Drive (write one or more lines to the command file; the engine polls it
+    //   each frame, dispatches, then truncates -- so rewrite fresh each time):
+    //   echo "dump"            > /tmp/bak_cmd.txt   -> /tmp/frame.png + /tmp/state.json
+    //   echo "click 640 400"   > /tmp/bak_cmd.txt   (window-content / GLFW-logical px)
+    //   echo "click 640 400 right" > /tmp/bak_cmd.txt
+    //   echo "hold W"          > /tmp/bak_cmd.txt   (movement; "release W" to stop)
+    //   echo "press G"         > /tmp/bak_cmd.txt   (edge bindings: G/C/I/+/-/...)
+    //   echo "char a"          > /tmp/bak_cmd.txt   (text entry, e.g. save-game names)
+    //   echo "quit"            > /tmp/bak_cmd.txt
+    //
+    // BorderlessWindow opens without the OS title bar (clean FB captures).
+    // EnableImGui false keeps the real input handlers unblocked for injection.
+    "Paths": {
+        // Resolve against THIS file's dir (engine/), not cwd (Task 0.6).
+        "Shaders": "",
+        "Saves": "",
+        "GameData": "../game_files/",
+        "Assets4k": "../assets_4k/"
+    },
+    "Graphics": {
+        "ResolutionScale": 10.8,
+        "EnableImGui": false,
+        // ===== BAK_AGENT (removable automation harness) =====
+        "BorderlessWindow": true
+        // ===== END BAK_AGENT =====
+    },
+    "Logging": {
+        "LogToFile": true,
+        "LogFilePath": "/tmp/main3d.log",
+        // SPAM | DEBUG | INFO | WARN | ERROR | FATAL
+        "LogLevel": "DEBUG"
+    },
+    // ===== BAK_AGENT (removable automation harness) =====
+    "Agent": {
+        "Enabled": true,
+        "CommandFile": "/tmp/bak_cmd.txt",
+        "DumpDir": "/tmp"
+    }
+    // ===== END BAK_AGENT =====
+}

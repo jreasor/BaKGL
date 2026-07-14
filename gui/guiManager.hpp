@@ -156,6 +156,11 @@ public:
 
     void SetCombatSequenceActive(bool isActive) override { mCombatSequenceActive = isActive; }
     bool GetCombatSequenceActive() { return mCombatSequenceActive; }
+
+    // ===== BAK_AGENT (removable automation harness) =====
+    const DialogRunner& GetDialogRunner() const { return mDialogRunner; }
+    // ===== END BAK_AGENT =====
+
     FontManager& GetFontManager() { return mFontManager; }
     const FontManager& GetFontManager() const { return mFontManager; }
     void PopOnExitCallback(OnExit action);

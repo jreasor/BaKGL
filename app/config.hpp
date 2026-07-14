@@ -63,6 +63,12 @@ struct Graphics
     // Gates FindSubstitute (textureFactory.cpp). Best-effort at runtime: affects
     // subsequently-loaded textures only. Persisted by SaveGraphicsValues.
     bool mOriginalMode{false};
+    // ===== BAK_AGENT (removable automation harness) =====
+    // Off by default; when true, MakeGlfwWindow requests GLFW_DECORATED=false so
+    // the window opens without the OS title bar (clean for FB-dump captures; also
+    // answers "start the game without the title bar?"). Inert when false.
+    bool mBorderlessWindow{false};
+    // ===== END BAK_AGENT =====
 };
 
 struct Logging
@@ -89,6 +95,21 @@ struct Game
     double mCombatSpeed{1.0};
 };
 
+// ===== BAK_AGENT (removable automation harness) =====
+// Opt-in, off-by-default config for the agent automation harness
+// (app/agentHarness.{hpp,cpp}). When mEnabled, the engine polls mCommandFile
+// each frame for drive commands (click/press/hold/char/dump/quit) and, on a
+// `dump`, writes a clean game-only <mDumpDir>/frame.png + state.json so a
+// blind CLI agent can see + steer the game. Inert (zero behavior change) when
+// mEnabled is false. Gated + fenced; fully removable (grep BAK_AGENT).
+struct Agent
+{
+    bool mEnabled{false};
+    std::string mCommandFile{"/tmp/bak_cmd.txt"};
+    std::string mDumpDir{"/tmp"};
+};
+// ===== END BAK_AGENT =====
+
 struct Config
 {
     Paths mPaths{};
@@ -96,6 +117,9 @@ struct Config
     Logging mLogging{};
     Audio mAudio{};
     Game mGame{};
+    // ===== BAK_AGENT (removable automation harness) =====
+    Agent mAgent{};
+    // ===== END BAK_AGENT =====
 };
 
 Config LoadConfig(std::string path);

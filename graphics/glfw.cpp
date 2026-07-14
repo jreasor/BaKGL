@@ -38,7 +38,8 @@ void GLAPIENTRY OpenGlMessageCallback(
 std::unique_ptr<GLFWwindow, DestroyGlfwWindow> MakeGlfwWindow(
     unsigned height,
     unsigned width,
-    std::string_view title)
+    std::string_view title,
+    bool borderless)
 {
     const auto logger = Logging::LogState::GetLogger("GLFW");
     glfwSetErrorCallback([](int error, const char* desc){ puts(desc); });
@@ -57,6 +58,10 @@ std::unique_ptr<GLFWwindow, DestroyGlfwWindow> MakeGlfwWindow(
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+
+    // ===== BAK_AGENT (removable automation harness) =====
+    if (borderless) glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
+    // ===== END BAK_AGENT =====
 
     window = glfwCreateWindow(width, height, title.data(), nullptr, nullptr);
     if( window == nullptr)

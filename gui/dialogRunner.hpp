@@ -47,6 +47,16 @@ public:
     const std::optional<BAK::ChoiceIndex>& GetLastChoice() const;
     std::optional<BAK::TeleportIndex> GetAndResetPendingTeleport();
 
+    // ===== BAK_AGENT (removable automation harness) =====
+    // Current dialog text for the state-JSON snapshot, or empty when no dialog
+    // is active. Guards on mCurrentTarget (GetSnippet ASSERTs a target exists).
+    std::string_view GetCurrentDialogText() const
+    {
+        if (!mCurrentTarget.has_value()) return {};
+        return GetSnippet().GetText();
+    }
+    // ===== END BAK_AGENT =====
+
     void SetDialogScene(IDialogScene* dialogScene);
     void SetInWorldView(bool);
 

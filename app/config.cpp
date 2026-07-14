@@ -45,6 +45,9 @@ Graphics LoadGraphics(const nlohmann::json& config)
         graphics.mAsyncTextureUpload = c.value("AsyncTextureUpload", false);
         graphics.mAnisotropicFilter = c.value("AnisotropicFilter", 4.0);
         graphics.mOriginalMode = c.value("OriginalMode", false);
+        // ===== BAK_AGENT (removable automation harness) =====
+        graphics.mBorderlessWindow = c.value("BorderlessWindow", false);
+        // ===== END BAK_AGENT =====
         if (c.contains("HeroTextures"))
         {
             for (const auto& hero : c["HeroTextures"])
@@ -108,6 +111,21 @@ Game LoadGame(const nlohmann::json& config)
     return game;
 }
 
+// ===== BAK_AGENT (removable automation harness) =====
+Agent LoadAgent(const nlohmann::json& config)
+{
+    Agent agent{};
+    if (config.contains("Agent"))
+    {
+        const auto& c = config["Agent"];
+        agent.mEnabled = c.value("Enabled", false);
+        agent.mCommandFile = c.value("CommandFile", "/tmp/bak_cmd.txt");
+        agent.mDumpDir = c.value("DumpDir", "/tmp");
+    }
+    return agent;
+}
+// ===== END BAK_AGENT =====
+
 
 Config LoadConfig(std::string path)
 {
@@ -130,6 +148,9 @@ Config LoadConfig(std::string path)
     config.mLogging = LoadLogging(data);
     config.mAudio = LoadAudio(data);
     config.mGame = LoadGame(data);
+    // ===== BAK_AGENT (removable automation harness) =====
+    config.mAgent = LoadAgent(data);
+    // ===== END BAK_AGENT =====
 
     std::cout << "Loaded config file: " << data <<"\n";
 

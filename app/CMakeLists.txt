@@ -1,8 +1,15 @@
 add_library(app
     config.hpp config.cpp
+    # ===== BAK_AGENT (removable automation harness) =====
+    agentHarness.hpp agentHarness.cpp
+    # ===== END BAK_AGENT =====
 )
 
-target_link_libraries(app com)
+# ===== BAK_AGENT (removable automation harness) =====
+# agentHarness.cpp pulls glm transitively (bak/camera.hpp etc.); the app lib did
+# not need glm before. Revert to `target_link_libraries(app com)` on removal.
+target_link_libraries(app com glm)
+# ===== END BAK_AGENT =====
 
 add_subdirectory(test)
 
