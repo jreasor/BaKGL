@@ -77,6 +77,17 @@ OverheadMap::OverheadMap(
         },
         []{}
     },
+    // Same compass widget + slot as MainView (pos {144,121}, dims {32,12}).
+    // OverheadMap uses the same FRAME.SCX chrome, so the slot is in the same
+    // place; the widget renders on top of the background (no transparency needed).
+    mCompass{
+        glm::vec2{144,121},
+        glm::vec2{32,12},
+        std::get<glm::vec2>(icons.GetCompass())
+            + glm::vec2{0, 1},
+        std::get<Graphics::SpriteSheetIndex>(icons.GetCompass()),
+        std::get<Graphics::TextureIndex>(icons.GetCompass())
+    },
     mCharacters{},
     mLogger{Logging::LogState::GetLogger("Gui::OverheadMap")}
 {
@@ -132,6 +143,12 @@ void OverheadMap::AddChildren()
         AddChildBack(&mZoomInButton);
     AddChildBack(&mCampButton);
     AddChildBack(&mMainButton);
+    AddChildBack(&mCompass);
+}
+
+void OverheadMap::SetHeading(BAK::GameHeading heading)
+{
+    mCompass.SetHeading(heading);
 }
 
 void OverheadMap::UpdatePartyMembers()

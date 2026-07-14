@@ -891,6 +891,11 @@ std::vector<Combatant>::iterator CombatManager::SelectNextCombatantForTurn(bool 
 void CombatManager::DisableCells(const std::vector<GridPos>& cells)
 {
     mDisabledCells = cells;
+    // DisableCells runs in ShowGrid *after* BeginCombat already called
+    // ComputeGrid (via SetCurrentCombatant) with mDisabledCells still empty,
+    // so NotWalkable cells were never marked Reachable=false on turn 1.
+    // Recompute now that the disabled set is populated.
+    ComputeGrid();
 }
 
 void CombatManager::ClearGrid()

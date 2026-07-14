@@ -44,7 +44,11 @@ constexpr auto missStart = glm::vec4{0.000f, .000f, .000f, 1.0f};
 constexpr auto missEnd   = glm::vec4{1.000f, .000f, .000f, 0.0f};
 
 constexpr auto gridAttack   = glm::vec4{.812, .745, .396, 1};
-constexpr auto gridMoveable = glm::vec4{.306, .765, .407, 1};
-constexpr auto gridOccupied = glm::vec4{.260, .570, .282, 1};
+// Match original BaK: a LIGHT green outline on the active combatant's cell, a
+// DARKER green on the moveable hover target. gridOccupied = active char (light),
+// gridMoveable = hover target (darker). (gridOccupied/gridMoveable were swapped
+// here — the engine previously had active=darker, hover=lighter, reversed.)
+constexpr auto gridMoveable = glm::vec4{.260, .570, .282, 1};
+constexpr auto gridOccupied = glm::vec4{.306, .765, .407, 1};
 
 }

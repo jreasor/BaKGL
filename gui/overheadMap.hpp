@@ -1,6 +1,7 @@
 #pragma once
 
 #include "gui/clickButton.hpp"
+#include "gui/compass.hpp"
 #include "gui/core/widget.hpp"
 
 #include "bak/types.hpp"
@@ -54,6 +55,11 @@ public:
 
     // Called by GuiManager::ShowOverheadMap before the screen is pushed.
     void Enter();
+
+    // Sync the compass to the camera heading. MainView's compass isn't rendered
+    // in overhead mode (only this screen is), so this screen needs its own.
+    // Called per-frame by app/main3d.cpp when InOverheadMap().
+    void SetHeading(BAK::GameHeading heading);
 
     [[nodiscard]] bool OnKeyEvent(const KeyEvent& event) override;
 
@@ -112,6 +118,9 @@ private:
     ClickButtonImage mZoomInButton;
     ClickButtonImage mCampButton;
     ClickButtonImage mMainButton;
+
+    // Same chrome as MainView (FRAME.SCX), so the compass sits at the same slot.
+    Compass mCompass;
 
     std::vector<ClickButtonImage> mCharacters;
 

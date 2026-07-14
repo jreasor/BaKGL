@@ -733,6 +733,14 @@ void GameRunner::SetHoveredEntity(std::optional<BAK::EntityIndex> entityId)
                 return;
             }
         }
+        // Picked id didn't resolve to a grid cell (pointer left the grid or the
+        // pick buffer read 0) — clear the stale hover instead of leaving the
+        // green rectangle stuck on the last cell.
+        if (mGridVisible)
+        {
+            mCombatManager.OnHoverChanged(std::nullopt);
+            UpdateGridCellColors();
+        }
     }
     else if (mGridVisible)
     {
@@ -817,8 +825,15 @@ void GameRunner::ShowGrid()
         {
             auto worldPos = BAK::MakeGamePositionFromGridCell(
                 mCombatPlayerPos, glm::uvec2{col, row});
-            auto glPos = BAK::ToGlCoord<float>(worldPos)
-                + glm::vec3{0, 1.0f, 0};
+            // No +1.0 Y lift: glPos.y is the cell's ground Y (the combatant's
+            // feet). The old +1.0 floated the quad ~1 GL above the ground, which
+            // in the combat camera's low angle projected to a foreshortened,
+            // up-and-right-shifted outline floating above the character instead
+            // of around its feet. Sinking under the ground texture (the old
+            // depth-on scene-pass problem) is a non-issue: the grid is drawn as
+            // a depth-off on-top overlay in app/main3d.cpp, so the quad is
+            // always visible regardless of its Y.
+            auto glPos = BAK::ToGlCoord<float>(worldPos);
 
             gridMin.x = std::min(gridMin.x, glPos.x);
             gridMax.x = std::max(gridMax.x, glPos.x);
@@ -839,18 +854,24 @@ void GameRunner::ShowGrid()
                 mZoneData->mObjects.GetObject("GridCell"),
                 glPos,
                 glm::vec3{0, gridRotation, 0},
-                // Y scale left UN-divided by gWorldScale so the grid-cell quad
-                // hovers ~1 GL above the ground (mesh local y=2.0 * scale.y=0.5);
-                // dividing Y by gWorldScale too collapsed the hover to ~0.02 GL,
-                // sinking the green move-rectangle under the ground texture.
-                // XZ still divided by gWorldScale (cell footprint in GL). Tunable:
-                // raise 0.5f if it still sinks, lower it if it floats too high.
+                // The grid cells are drawn as an ON-TOP overlay in app/main3d.cpp
+                // (depth test off, after the combatant models) so a character's own
+                // model can't occlude its active-cell outline. That makes sinking a
+                // non-issue (the overlay always draws on top), so the Y scale is kept
+                // tiny: y~0.05 GL sits the outline at the feet with negligible
+                // perspective parallax (no "forward/up-right a square" shift, and the
+                // pick — same model matrix — lands on the cell under the cursor).
+                // XZ stays divided by gWorldScale (cell footprint in GL).
                 glm::vec3{
                     (BAK::gCombatGridCellSize - 1) / BAK::gWorldScale,
-                    0.5f,
+                    0.02f,
                     (BAK::gCombatGridCellSize - 1) / BAK::gWorldScale},
                 &mGridCells[i].mColor});
-            mSystems->AddRenderable(mGridCellRenderables.back());
+            // Not added to mSystems->GetRenderables(): the grid is drawn as an
+            // on-top overlay in app/main3d.cpp (after the combatant models, depth
+            // test off) so a character's own model can't occlude its active-cell
+            // outline. mGridCellRenderables is drawn directly there and is also
+            // used by the combat pick pass.
         }
     }
     mGridVisible = true;
@@ -950,7 +971,13 @@ void GameRunner::UpdateGridCellColors()
         mGridCells[i].mColor = color.a > 0
             ? std::optional<glm::vec4>{color}
             : std::nullopt;
-        mSystems->EnableRenderable(mGridCells[i].mEntityId, color.a > 0);
+        // Grid cells are drawn by the on-top overlay in app/main3d.cpp (not via
+        // mSystems), so EnableRenderable is a no-op here — gate the renderable's
+        // own visibility instead. DrawWithShadow skips !GetVisible(), so an
+        // inactive cell (alpha 0) is never drawn: with useInstanceColor=0 the
+        // shader would otherwise ignore the frame texture's alpha and render the
+        // whole quad opaque white ("solid white squares everywhere").
+        mGridCellRenderables[i].SetVisible(color.a > 0);
     }
 }
 

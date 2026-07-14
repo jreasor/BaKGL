@@ -767,6 +767,10 @@ int main(int argc, char** argv)
         {
             gameState.SetLocation(cameraPtr->GetGameLocation());
         }
+        // OverheadMap has its own compass (MainView's isn't rendered in overhead
+        // mode). Sync it every frame so it's correct on entry and on rotate.
+        if (guiManager.InOverheadMap())
+            guiManager.mOverheadMap.SetHeading(cameraPtr->GetHeading());
 
         glfwPollEvents();
         glfwGetCursorPos(window.get(), &pointerPosX, &pointerPosY);
@@ -872,6 +876,26 @@ int main(int argc, char** argv)
                         lightCamera,
                         *cameraPtr,
                         true);
+                }
+
+                // Combat grid overlay: draw the grid cells ON TOP of the combatant
+                // models (depth test off) so a character's own model can't hide its
+                // active-cell outline. Without this the active character's cell — the
+                // only one with a model on it — was occluded to a tiny parallax-shifted
+                // corner ("tiny square above and to the right"), while empty moveable
+                // cells showed the full outline. Grid cells are kept out of
+                // mSystems->GetRenderables() in GameRunner::ShowGrid for this reason.
+                if (gameRunner.mCombatManager.IsCombatActive())
+                {
+                    glDisable(GL_DEPTH_TEST);
+                    renderer.DrawWithShadow(
+                        gameRunner.GetZoneRenderData(),
+                        gameRunner.mGridCellRenderables,
+                        light,
+                        lightCamera,
+                        *cameraPtr,
+                        false);
+                    glEnable(GL_DEPTH_TEST);
                 }
 
                 renderer.DrawText3D(

@@ -12,7 +12,7 @@
         "Assets4k": "../assets_4k/"
     },
     "Graphics": {
-        "ResolutionScale": 4.0,
+        "ResolutionScale": 10.8,
         "EnableShadows": true,
         "EnableImGui": false,
         "DrawDistance": 128000,
