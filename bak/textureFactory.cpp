@@ -1,5 +1,6 @@
 #include "bak/textureFactory.hpp"
 
+#include "bak/constants.hpp"
 #include "bak/image.hpp"
 #include "bak/imageStore.hpp"
 #include "bak/palette.hpp"
@@ -311,99 +312,176 @@ void TextureFactory::AddScreenToTextureStore(
     }
 }
 
+// Terrain band layout of the 320x200 ZxxL.SCX: 8 horizontal strips in BAK::Terrain enum
+// order (Ground/Road/Waterfall/Path/Dirt/River/Sand/Bank). Shared by the whole-image
+// slicer (tier 2) and the proprietary slicer (tier 3) so both honor one definition.
+constexpr std::array<unsigned, 8> kBandOffsets{70, 20, 20, 32, 20, 27, 6, 5};
+constexpr unsigned kBandTotal = 200;
+static_assert(
+    std::accumulate(kBandOffsets.begin(), kBandOffsets.end(), 0u) == kBandTotal,
+    "terrain band offsets must sum to the SCX height (200)");
+
+// Per-type suffixes in BAK::Terrain enum order (Ground=0..Bank=7). A per-type substitute
+// is named <ZONE>_<TYPE>.PNG, e.g. Z01L_GROUND.PNG. The static_assert ties this table to
+// the enumerator count so the two cannot drift apart.
+constexpr std::array<const char*, 8> kTypeNames{
+    "GROUND", "ROAD", "WATERFALL", "PATH", "DIRT", "RIVER", "SAND", "BANK"};
+static_assert(
+    kTypeNames.size() == static_cast<unsigned>(BAK::Terrain::Bank) + 1,
+    "kTypeNames must match the BAK::Terrain enumerator count");
+
+// Tier 2: slice band `bandIndex` out of a whole-image zone substitute (ZxxL.PNG). Band
+// boundaries are scaled to the substitute's height (fractions of 200) so any sized PNG
+// maps to the same 8 strips. Texels are copied bottom-up to match PNGToTexture's row
+// order (GL-ready). targetWidth/Height stay at the original BAK strip dims (Task 1.3) so
+// worldFactory's UV math is unchanged. The substitute is NOT shuffled -- the strip-0
+// shuffle was a hack to hide repetition in the 320x200 original; a real 4K tile is expected
+// to be seamless+flat at the asset source instead (per-type PNGs, tier 1).
+static Graphics::Texture SliceWholeImageBand(
+    const PNGImage& img,
+    unsigned bandIndex,
+    unsigned origWidth,
+    unsigned origAccumBefore)
+{
+    const auto W = img.mWidth;
+    const auto H = img.mHeight;
+    const auto origOffset = kBandOffsets[bandIndex];
+    const auto topRow = static_cast<unsigned>(
+        std::lround(static_cast<double>(origAccumBefore) * H / kBandTotal));
+    const auto botRow = static_cast<unsigned>(
+        std::lround(static_cast<double>(origAccumBefore + origOffset) * H / kBandTotal));
+    const auto stripH = (botRow > topRow) ? (botRow - topRow) : 1u;
+
+    const auto F = [](auto v){ return static_cast<float>(v) / 255.f; };
+    auto texels = Graphics::Texture::TextureType{};
+    texels.reserve(static_cast<std::size_t>(W) * stripH);
+    // bottom-up within the strip, matching PNGToTexture's row order (GL-ready)
+    for (int y = static_cast<int>(botRow) - 1; y >= static_cast<int>(topRow); --y)
+    {
+        for (unsigned x = 0; x < W; ++x)
+        {
+            const auto& c = img.mPixels[static_cast<std::size_t>(y) * W + x];
+            texels.emplace_back(glm::vec4{F(c.r), F(c.g), F(c.b), F(c.a)});
+        }
+    }
+    return Graphics::Texture{texels, W, stripH, origWidth, origOffset};
+}
+
+// Tier 3: slice band `bandIndex` out of the proprietary ZxxL.SCX (the `terrain` Image +
+// `palette`). Absolute-row math (startOff * width), palette-mapped. Band 0 (Ground) keeps
+// the original engine's std::shuffle -- the 320x200 ground strip is low-entropy and bands
+// under GL_REPEAT, so the shuffle hides repetition. Preserved verbatim so OriginalMode
+// retains the original look.
+static Graphics::Texture SliceProprietaryBand(
+    const Image& terrain,
+    const Palette& palette,
+    unsigned bandIndex,
+    unsigned startOff)
+{
+    const auto offset = kBandOffsets[bandIndex];
+    auto* pixels = terrain.GetPixels();
+    const auto width = terrain.GetWidth();
+
+    const auto imageStart = startOff * width;
+    const auto imageEnd = (startOff + offset) * width;
+    auto image = Graphics::Texture::TextureType{};
+    image.reserve(imageEnd - imageStart);
+    for (unsigned i = imageStart; i < imageEnd; i++)
+    {
+        const auto& color = palette.GetColor(pixels[i]);
+        image.push_back(color);
+    }
+    if (offset == 70) // Ground band
+    {
+        std::random_device rd;
+        std::mt19937 g(rd());
+        std::shuffle(image.begin(), image.end(), g);
+    }
+    return Graphics::Texture{image, width, offset, width, offset};
+}
+
+// Per-type terrain substitution. Each of the 8 terrain types (Ground/Road/Waterfall/Path/
+// Dirt/River/Sand/Bank, in BAK::Terrain enum order) can be replaced by its own
+// seamless+flat PNG named <ZONE>_<TYPE>.PNG (e.g. Z01L_GROUND.PNG). This kills the
+// GL_REPEAT banding a single whole-image ZxxL.PNG caused: its Ground band ran a strong
+// vertical brightness gradient that tiled into horizontal stripes. Per-type lookup
+// precedence (first hit wins; all routed through FindSubstitute so Graphics.OriginalMode
+// gates every tier back to the proprietary 1993 art):
+//   1. <ZONE>_<TYPE>.PNG -- per-type 4K art (PNGToTexture: actual=PNG dims, target=BAK strip)
+//   2. <ZONE>.PNG        -- whole-image substitute, sliced into band i (legacy fallback)
+//   3. proprietary ZxxL.SCX band i (terrain Image + palette)
+// The whole-image PNG is decoded lazily (cached) so it is never opened when all 8 types
+// have per-type art. Exactly 8 textures are added in enum order regardless of source,
+// preserving GetTerrainOffset(t) = mTerrainOffset + (unsigned)t and mHorizonOffset.
 void TextureFactory::AddTerrainToTextureStore(
     Graphics::TextureStore& store,
     const Image& terrain,
     const Palette& palette,
     std::string_view scx)
 {
-    // 4K substitute path (Task 1.4): one whole-image ZxxL.PNG per zone, sliced into the
-    // same 8 horizontal bands as the proprietary ZxxL.SCX (Ground/Road/Waterfall/Path/
-    // Dirt/River/Sand/Bank, in that order). Band boundaries are scaled to the substitute's
-    // height (fractions of 200) so any sized PNG maps correctly. The substitute is NOT
-    // shuffled — the strip-0 shuffle was a hack to hide repetition in the 320×200 original,
-    // and a real 4K ground tile is already seamless. Per Task 1.3, targetWidth/Height stay
-    // at the original BAK strip dims so layout/UV behavior matches the fallback.
     auto baseName = SplitString(".", std::string{scx})[0];
-    if (auto substitute = FindSubstitute(baseName, ".PNG"))
-    {
-        auto img = LoadAndCapPNG(substitute->string());
-        const auto W = img.mWidth;
-        const auto H = img.mHeight;
-        Logging::LogDebug(__FUNCTION__) << "Found substitute terrain: " << *substitute
-            << " Dims: (" << W << "x" << H << ")\n";
+    const auto origWidth = terrain.GetWidth();
 
-        constexpr std::array<unsigned, 8> kBandOffsets{70, 20, 20, 32, 20, 27, 6, 5};
-        constexpr unsigned kBandTotal = 200;
-        static_assert(
-            std::accumulate(kBandOffsets.begin(), kBandOffsets.end(), 0u) == kBandTotal,
-            "terrain band offsets must sum to the SCX height (200)");
-
-        const auto F = [](auto v){ return static_cast<float>(v) / 255.f; };
-        const auto origWidth = static_cast<unsigned>(terrain.GetWidth());
-
-        unsigned origAccum = 0;
-        for (auto origOffset : kBandOffsets)
+    // Tier-2 path, looked up once (cheap exists check); the PNG decode is deferred to
+    // GetWholeImg so it never runs when every type has a per-type substitute.
+    const auto wholeImgPath = FindSubstitute(baseName, ".PNG");
+    std::optional<PNGImage> wholeImg;
+    const auto GetWholeImg = [&]() -> const PNGImage* {
+        if (!wholeImgPath) return nullptr;
+        if (!wholeImg)
         {
-            const auto topRow = static_cast<unsigned>(
-                std::lround(static_cast<double>(origAccum) * H / kBandTotal));
-            const auto botRow = static_cast<unsigned>(
-                std::lround(static_cast<double>(origAccum + origOffset) * H / kBandTotal));
-            const auto stripH = (botRow > topRow) ? (botRow - topRow) : 1u;
+            wholeImg = LoadAndCapPNG(wholeImgPath->string());
+            Logging::LogDebug(__FUNCTION__) << "Found substitute terrain (whole image): "
+                << *wholeImgPath << " Dims: (" << wholeImg->mWidth << "x"
+                << wholeImg->mHeight << ")\n";
+        }
+        return &*wholeImg;
+    };
 
-            auto texels = Graphics::Texture::TextureType{};
-            texels.reserve(static_cast<std::size_t>(W) * stripH);
-            // bottom-up within the strip, matching PNGToTexture's row order (GL-ready)
-            for (int y = static_cast<int>(botRow) - 1; y >= static_cast<int>(topRow); --y)
+    unsigned origAccum = 0;
+    for (unsigned i = 0; i < 8; ++i)
+    {
+        const auto origOffset = kBandOffsets[i];
+        if (auto perType = FindSubstitute(baseName + "_" + kTypeNames[i], ".PNG"))
+        {
+            Logging::LogDebug(__FUNCTION__) << "Found per-type substitute terrain: "
+                << *perType << " (type " << kTypeNames[i] << ")\n";
+            auto perTypeTex = PNGToTexture(perType->string(), origWidth, origOffset);
+            // Structural-seam guard. The terrain GL layer is square maxDim x maxDim
+            // (maxDim = the store's largest texture dim; a per-type PNG that is the
+            // largest texture drives it to max(w,h)). GetPixel tiles the PNG into that
+            // layer with modulo wrap and the layer wraps with GL_REPEAT, so a wrap
+            // boundary falls mid-image whenever maxDim is not a whole multiple of the
+            // PNG's height (vertical) or width (horizontal). "Seamless" only matches the
+            // PNG's own edges -- not an interior wrap row -- so a non-dividing PNG shows
+            // a repeating seam in-game even when perfectly seamless. A square PNG (or a
+            // smaller-divides-larger size like 2048x512 / 2048x1024) avoids it; square is
+            // also isotropic on the square ground quad, so no pre-stretch is needed.
+            const auto pw = perTypeTex.GetWidth();
+            const auto ph = perTypeTex.GetHeight();
+            const auto layerDim = std::max(pw, ph);
+            if (layerDim % pw != 0 || layerDim % ph != 0)
             {
-                for (unsigned x = 0; x < W; ++x)
-                {
-                    const auto& c = img.mPixels[static_cast<std::size_t>(y) * W + x];
-                    texels.emplace_back(glm::vec4{F(c.r), F(c.g), F(c.b), F(c.a)});
-                }
+                Logging::LogInfo(__FUNCTION__) << "Per-type terrain substitute "
+                    << *perType << " (" << pw << "x" << ph << ") is not a whole divisor"
+                    << " of its GL layer maxDim (~" << layerDim << "); GL_REPEAT will wrap"
+                    << " mid-image and show a structural repeating seam. Use a SQUARE PNG"
+                    << " (e.g. 1024x1024 / 1536x1536) or a smaller-divides-larger size"
+                    << " (e.g. 2048x512 / 2048x1024), made seamless on BOTH axes + flat.\n";
             }
-            store.AddTexture(Graphics::Texture{
-                texels, W, stripH, origWidth, origOffset});
-            origAccum += origOffset;
+            store.AddTexture(perTypeTex);
         }
-        return;
-    }
-
-    // Fallback: proprietary ZxxL.SCX slice (unchanged, incl. strip-0 shuffle).
-    Logging::LogSpam(__FUNCTION__) << "No substitute terrain for: " << scx
-        << " (looked for " << baseName << ".PNG), using proprietary slice\n";
-    auto* pixels = terrain.GetPixels();
-    auto width = terrain.GetWidth();
-
-    auto startOff = 0;
-    // FIXME: Can I find these in the data files somewhere?
-    for (auto offset : {70, 20, 20, 32, 20, 27, 6, 5})
-    {
-        auto image = Graphics::Texture::TextureType{};
-        const auto imageStart = startOff * width;
-        const auto imageEnd = (startOff + offset) * width;
-        image.reserve(imageEnd - imageStart);
-        for (unsigned i = imageStart; i < imageEnd; i++)
+        else if (const auto* img = GetWholeImg())
         {
-            const auto& color = palette.GetColor(pixels[i]);
-            image.push_back(color);
+            store.AddTexture(SliceWholeImageBand(*img, i, origWidth, origAccum));
         }
-        if (offset == 70)
+        else
         {
-            std::random_device rd;
-            std::mt19937 g(rd());
-            std::shuffle(image.begin(), image.end(), g);
+            Logging::LogSpam(__FUNCTION__) << "No substitute terrain for type "
+                << kTypeNames[i] << " of " << scx << ", using proprietary slice\n";
+            store.AddTexture(SliceProprietaryBand(terrain, palette, i, origAccum));
         }
-
-        startOff += offset;
-        
-        store.AddTexture(
-            Graphics::Texture{
-                image,
-                static_cast<unsigned>(width),
-                static_cast<unsigned>(offset),
-                static_cast<unsigned>(width),
-                static_cast<unsigned>(offset)});
+        origAccum += origOffset;
     }
 }
 
